@@ -121,11 +121,37 @@ export default function ImageSearch({
     });
   };
 
+  const disclaimer = (
+    <div className="horizontalStack disclaimer">
+      <Typography>
+        Search results and images provided by{' '}
+        <a href="https://thegamesdb.net/" target="_blank">
+          TheGamesDB
+        </a>
+      </Typography>
+    </div>
+  );
+
   return (
     <Modal open={open} onClose={() => setOpen(false)}>
       <div className="searchModal">
         <div className="verticalStack">
           <div className="horizontalStack searchHeader">
+            <Tooltip
+              title={
+                searchResults.length > 0
+                  ? `Go back to results for ${searchQuery}`
+                  : `Close`
+              }
+            >
+              <IconButton
+                onClick={() =>
+                  searchResults.length ? setSearchResults([]) : setOpen(false)
+                }
+              >
+                {searchResults.length ? <ArrowBackIcon /> : <CloseIcon />}
+              </IconButton>
+            </Tooltip>
             <TextField
               className="textField"
               size="small"
@@ -156,24 +182,10 @@ export default function ImageSearch({
                 <p>Search</p>
               )}
             </Button>
-            <Tooltip
-              title={
-                searchResults.length > 0
-                  ? `Go back to results for ${searchQuery}`
-                  : `Close`
-              }
-            >
-              <IconButton
-                onClick={() =>
-                  searchResults.length ? setSearchResults([]) : setOpen(false)
-                }
-              >
-                {searchResults.length ? <ArrowBackIcon /> : <CloseIcon />}
-              </IconButton>
-            </Tooltip>
           </div>
           {searchResults.length === 0 && (
             <div className="searchResultsContainer horizontalStack">
+              {disclaimer}
               {gameEntries.map((gameEntry) => (
                 <div className="searchResult" key={gameEntry.id}>
                   <Button>
@@ -187,9 +199,9 @@ export default function ImageSearch({
                     className="verticalStack"
                     onClick={() => switchToGameView(gameEntry.id)}
                   >
-                    <Typography variant="h6">{gameEntry.gameTitle}</Typography>
+                    <Typography variant="h6">See more images for</Typography>
                     <Typography variant="h6">
-                      {gameEntry.platform?.name}
+                      {gameEntry.gameTitle} - {gameEntry.platform?.name}
                     </Typography>
                   </Button>
                 </div>
@@ -206,6 +218,7 @@ export default function ImageSearch({
           )}
           {searchResults.length > 0 && (
             <div className="searchResultsContainer horizontalStack">
+              {disclaimer}
               {searchResults.map((result) => (
                 <Button className="searchResult" key={result.imageUrl}>
                   <img
