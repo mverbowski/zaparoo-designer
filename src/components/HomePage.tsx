@@ -37,11 +37,13 @@ export const HomePage = () => {
             What’s TapTo?
           </Typography>
           <Typography>
-            <a href="https://github.com/wizzomafizzo/tapto/">TapTo</a> is an
-            open source system for launching games and scripted actions using
-            physical objects like NFC cards. It's a great way to make playing
-            games more accessible and add some fun to your gaming setup! TapTo
-            is currently supported on{' '}
+            <a href="https://github.com/ZaparooProject/zaparoo-core/">
+              Zaparoo
+            </a>{' '}
+            is an open source system for launching games and scripted actions
+            using physical objects like NFC cards. It's a great way to make
+            playing games more accessible and add some fun to your gaming setup!
+            TapTo is currently supported on{' '}
             <a href="https://mister-devel.github.io/MkDocs_MiSTer/">
               MiSTer FPGA
             </a>
@@ -58,30 +60,21 @@ export const HomePage = () => {
             or want to show off your work!
           </Typography>
           <Typography className="links">
-            <Link href="https://github.com/wizzomafizzo/tapto/releases">
+            <Link href="https://github.com/ZaparooProject/zaparoo-core/releases">
               Download TapTo
             </Link>{' '}
             |{' '}
-            <Link href="https://github.com/wizzomafizzo/tapto/blob/main/docs/labels.md">
-              Printing Labels
-            </Link>{' '}
+            <Link href="https://wiki.zaparoo.org/Labels">Printing Labels</Link>{' '}
             |{' '}
-            <Link href="https://github.com/wizzomafizzo/tapto/blob/main/docs/community.md#cases">
+            <Link href="https://wiki.zaparoo.org/Custom_Cases">
               NFC Reader Cases
             </Link>{' '}
             | <Link href="https://discord.com/invite/jNdWq52rBP">Discord</Link>{' '}
-            |{' '}
-            <Link href="https://github.com/wizzomafizzo/tapto/blob/main/docs/developers.md">
-              Vendors
-            </Link>{' '}
-            |{' '}
-            <Link href="https://github.com/wizzomafizzo/tapto/blob/main/docs/community.md">
+            | <Link href="https://wiki.zaparoo.org/Vendors">Vendors</Link> |{' '}
+            <Link href="https://wiki.zaparoo.org/Community_Projects">
               Community Projects
             </Link>{' '}
-            |{' '}
-            <Link href="https://github.com/wizzomafizzo/tapto/blob/main/docs/api.md">
-              API
-            </Link>
+            | <Link href="https://wiki.zaparoo.org/API">API</Link>
           </Typography>
         </div>
       </div>
@@ -91,11 +84,11 @@ export const HomePage = () => {
           <img style={{ marginBottom: '18px' }} src={examplesUrl} />
           <Typography>
             Having your favorite artwork on your NFC token is the perfect
-            finishing touch for your TapTo collection. TapTo Designer
+            finishing touch for your Zaparoo collection. Zaparoo Designer
             streamlines this process to accomodate every skill level.
           </Typography>
           <Typography>
-            Simply upload your artwork, choose from a variety of TapTo label
+            Simply upload your artwork, choose from a variety of label
             templates, and export in a growing number of print ready formats.
             Not sure where to get artwork? No worries! We have you covered with
             our integrated game search tools.
