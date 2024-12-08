@@ -113,9 +113,9 @@ export class IGBDProvider extends BaseProvider<IGDBGamesResult[]> {
         fields id,artworks,cover,genres,name,platforms,screenshots,storyline,summary,artworks.*,cover.*,screenshots.*, platforms.id, platforms.platform_logo, involved_companies, involved_companies.company, involved_companies.company.logo, involved_companies.company.logo.*;
         ${termSearch}
         where version_parent = null & ${platformSearch} (cover != null | artworks != null);
-        sort name asc;
         limit ${pageSize}; offset ${offSet};`
 
+    console.log(body);
     return new Request(url, {
       method: 'POST',
       headers: await this.requestHeaders(),
@@ -145,9 +145,16 @@ export class IGBDProvider extends BaseProvider<IGDBGamesResult[]> {
         }
         if (cover) {
           result.cover = extractUsefulImage(cover);
+        } else if (artworks) {
+          result.cover = result.artworks[0];
         } else {
-          if (artworks) {
-            result.cover = result.artworks[0];
+          result.cover = {
+            url: '',
+            thumb: '',
+            width: 0,
+            height: 0,
+            image_id: 'none',
+            id: 0,
           }
         }
         if (platforms) {
