@@ -115,7 +115,6 @@ export class IGBDProvider extends BaseProvider<IGDBGamesResult[]> {
         where version_parent = null & ${platformSearch} (cover != null | artworks != null);
         limit ${pageSize}; offset ${offSet};`
 
-    console.log(body);
     return new Request(url, {
       method: 'POST',
       headers: await this.requestHeaders(),
