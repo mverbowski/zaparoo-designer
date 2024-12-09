@@ -41,6 +41,7 @@ type IGDBGamesResult = {
   name: string;
   platforms: IGDBPlatformsResult[];
   involved_companies: IGDBInvolvedCompany[];
+  keywords: { id: number, name: string }[];
   storyline;
 }
 
@@ -91,7 +92,7 @@ export class IGBDProvider extends BaseProvider<IGDBGamesResult[]> {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async getSearchRequest(searchTerm: string, page: string, platformId?: string): Promise<Request> {
+  async getSearchRequest(searchTerm: string, page: string, platformId?: string, romHacks: boolean = false): Promise<Request> {
     const searchPath = '/v4/games';
     const url = new URL(
       searchPath,
@@ -101,19 +102,29 @@ export class IGBDProvider extends BaseProvider<IGDBGamesResult[]> {
     const offSet = (parseInt(page, 10) - 1) * pageSize;
     let platformSearch = '';
     let termSearch = '';
+    let romHackFilter = '';
     if (searchTerm) {
       termSearch = `search "${searchTerm}";`;
     }
     if (platformId) {
       platformSearch  = ` platforms = [${platformId}] & `;
     }
+    if (!romHacks) {
+      // 2004 = unofficial
+      // 16696 = rom hack
+      // 24124 = fangame
+      // 27216 = fanmade
+      romHackFilter  = ` keywords = !(2004, 16696, 24124, 27216) & `;
+    }
     // parent = null excludes duplicates of versions
     // company involved != null probably excludes romhacks
     const body = `
-        fields id,artworks,cover,genres,name,platforms,screenshots,storyline,summary,artworks.*,cover.*,screenshots.*, platforms.id, platforms.platform_logo, involved_companies, involved_companies.company, involved_companies.company.logo, involved_companies.company.logo.*;
+        fields id,artworks,cover,genres,name,platforms,screenshots,keywords,storyline,summary,artworks.*,cover.*,screenshots.*, platforms.id, platforms.platform_logo, involved_companies, involved_companies.company, involved_companies.company.logo, involved_companies.company.logo.*;
         ${termSearch}
-        where version_parent = null & ${platformSearch} (cover != null | artworks != null);
+        where version_parent = null & ${platformSearch} ${romHackFilter} (cover != null | artworks != null);
         limit ${pageSize}; offset ${offSet};`
+
+console.log(body)
 
     return new Request(url, {
       method: 'POST',

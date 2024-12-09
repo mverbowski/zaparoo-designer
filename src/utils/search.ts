@@ -14,7 +14,7 @@ export type ResultsForSearchUI = {
 
 export const platformPromise = import('../../netlify/data/IGDBPlatforms.mts').then((data) => {
   const allPlatform = { id: 0, name: 'All', abbreviation: 'all', versions: [] };
-  const platforms = data.platforms.results;
+  const platforms = data.platforms.results.filter((p) => p.popular === true);
   platforms.unshift(allPlatform)
   platformsData = platforms;
   return {
@@ -27,12 +27,16 @@ export async function fetchGameList(
   query: string,
   platform: PlatformResult,
   page: string,
+  romHacks = false,
 ): Promise<ResultsForSearchUI> {
   const url = getGoodUrl(SEARCH_ENDPOINT);
   url.searchParams.append('searchTerm', query);
   url.searchParams.append('page', page);
   if (platform.id !== 0) {
     url.searchParams.append('platformId', `${platform.id}`);
+  }
+  if (romHacks) {
+    url.searchParams.append('romHacks', '1')
   }
   return (
     fetch(url, {
