@@ -3,11 +3,8 @@ import {
   util,
   Point,
   Shadow,
-  loadSVGFromURL,
   Group,
   FabricObject,
-  Color,
-  Gradient,
   type Canvas,
   type SerializedGroupProps,
   Rect,
@@ -15,12 +12,41 @@ import {
 import { CardData } from '../contexts/fileDropper';
 import type { templateType, templateOverlay } from '../resourcesTypedef';
 import { processCustomizations } from './processCustomizations';
+import { extractUniqueColorsFromGroup, parseSvg } from './templateHandling';
 
 FabricObject.ownDefaults.originX = 'center';
 FabricObject.ownDefaults.originY = 'center';
 FabricObject.ownDefaults.objectCaching = false;
 /* add the ability to parse 'id' to rects */
-Rect.ATTRIBUTE_NAMES = [...Rect.ATTRIBUTE_NAMES, 'id'];
+Rect.ATTRIBUTE_NAMES = [...Rect.ATTRIBUTE_NAMES, 'id', 'zaparoo-placeholder', 'zaparoo-scale-strategy'];
+FabricObject.customProperties = [
+  'zaparoo-placeholder',
+  'id',
+  'zaparoo-scale-strategy',
+  'original_stroke',
+  'original_fill'
+];
+
+FabricImage.customProperties = [
+  'resourceType',
+  'original_stroke',
+  'original_fill'
+];
+
+// declare the methods for typescript
+declare module "fabric" {
+  // to have the properties recognized on the instance and in the constructor
+  interface FabricObject {
+    "original_fill": string;
+    "original_stroke": string;
+    "zaparoo-placeholder"?: "main";
+    "zaparoo-scale-strategy"?: "fit" | "cover";
+  }
+
+  interface FabricImage {
+    "resourceType"?: "main" | "screenshot" | "logo";
+  }
+}
 
 export const scaleImageToOverlayArea = (
   template: templateType,
@@ -104,51 +130,6 @@ export const scaleImageToOverlayArea = (
   mainImage.setCoords();
 };
 
-/**
- * extract and normalizes to hex format colors in the objects
- * remove opacity from colors and sets it on the objects
- * @param group
- */
-// TODO: supports gradients and objects with different opacity
-const extractUniqueColorsFromGroup = (group: Group): string[] => {
-  const colors: string[] = [];
-  group.forEachObject((object) => {
-    (['stroke', 'fill'] as const).forEach((property) => {
-      if (
-        object[property] &&
-        object[property] !== 'transparent' &&
-        !(object[property] as Gradient<'linear'>).colorStops
-      ) {
-        const colorInstance = new Color(object[property] as string);
-        const hexValue = `#${colorInstance.toHex()}`;
-        const opacity = colorInstance.getAlpha();
-        object[property] = hexValue;
-        object.set({
-          [property]: hexValue,
-          [`original_${property}`]: hexValue,
-        });
-        object.opacity = opacity;
-        if (!colors.includes(hexValue)) {
-          colors.push(hexValue);
-        }
-      }
-    });
-  });
-  return colors;
-};
-
-const parseSvg = (url: string): Promise<SerializedGroupProps> =>
-  loadSVGFromURL(url).then(({ objects }) => {
-    const nonNullObjects = objects.filter(
-      (objects) => !!objects,
-    ) as FabricObject[];
-    const group = new Group(nonNullObjects);
-    extractUniqueColorsFromGroup(group);
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    return group.toObject(['original_stroke', 'original_fill', 'id']);
-  });
-
 const reposition = (
   fabricLayer: FabricObject,
   template: templateType,
@@ -169,6 +150,7 @@ export const setTemplateOnCanvases = async (
   cards: CardData[],
   template: templateType,
 ): Promise<string[]> => {
+  console.trace(cards)
   const { overlay, background, shadow, layout } = template || {};
   const [overlayImageSource, backgroundImageSource] = await Promise.all([
     overlay &&
@@ -230,7 +212,11 @@ export const setTemplateOnCanvases = async (
         { cssOnly: true },
       );
     }
-    const mainImage = canvas.getObjects('image')[0] as FabricImage;
+    const mainImage = canvas.getObjects('image').find(
+      (fabricImage) => (fabricImage as FabricImage).resourceType === 'main'
+    ) as FabricImage;
+    canvas.remove(...canvas.getObjects());
+    canvas.add(mainImage);
     if (mainImage && shadow) {
       mainImage.shadow = new Shadow({ ...Shadow.parseShadow(shadow), nonScaling: true });
     }
