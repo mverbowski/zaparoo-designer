@@ -91,6 +91,10 @@ As you can see there are 10 elements in this SVG, some of them are in a group th
 
 The elements are drawn top to bottom, meaning that the top element is drawn first, and so is behind the others. If you are not used to svgs it is the opposite of what you would think. Top elements are at the bottom.
 
+The largest element will be scaled to fit the media file ( the nfc card in this case ).
+While it could seem redundant, it always a good idea to add a rectangle with no fill and no stroke of the exact size of the template itself. A sort of box spacer that will ensure you can define ( OR NOT ) some space from the nfc card border themselves.
+The software will try to scale the template to fit the card, you don't have a way to leave 2 mm of space all around to faciliate placement. By making a transparent box and designing inside this transparent box a slightly small template you will give the template some space from the full size of the card.
+
 In this case the first element is a special one:
 
 ```xml
