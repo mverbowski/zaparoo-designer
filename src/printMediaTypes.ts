@@ -40,7 +40,7 @@ export const tapToPrePrinted: MediaDefinition = {
   strokeWidth: 2,
   stroke: 'black',
   fill: 'white',
-  label: 'Tapto pre-printed',
+  label: 'Zap Trading Card',
 };
 
 // or a musicasset box inlay cover
@@ -52,7 +52,7 @@ export const miniNfcCard: MediaDefinition = {
   strokeWidth: 2,
   stroke: 'black',
   fill: 'white',
-  label: 'Small nfc card 3x5cm',
+  label: 'Mini NFC card',
 };
 
 // retro remake pcb cards
@@ -70,8 +70,8 @@ export const r2Pcb1_0: MediaDefinition = {
 
 export const mediaTargetList = [
   NFCCCsizeCard,
-  miniNfcCard,
   tapToPrePrinted,
+  miniNfcCard,
   r2Pcb1_0,
   TapeBoxCover,
   // taptoPrePrintedFullHeight,
