@@ -52,7 +52,7 @@ declare module "fabric" {
 }
 
 
-export const scaleImageToOverlayArea = (
+export const scaleImageToOverlayArea = async (
   placeholder: FabricObject,
   mainImage: FabricImage,
 ) => {
@@ -76,7 +76,8 @@ export const scaleImageToOverlayArea = (
   );
 
   if (isCover) {
-    const  clipPath =  new Rect({ width: scaledOverlay.x, height: scaledOverlay.y });
+    const clipPath = await placeholder.clone();
+    clipPath.visible = true;
     clipPath.absolutePositioned = true;
     mainImage.clipPath = clipPath;
   } else {
@@ -209,7 +210,7 @@ export const setTemplateV2OnCanvases = async (
       if (mainImage) {
         const index = canvas.getObjects().indexOf(placeholder);
         canvas.insertAt(index, mainImage);
-        scaleImageToOverlayArea(placeholder, mainImage);
+        await scaleImageToOverlayArea(placeholder, mainImage);
       }
     }
   
