@@ -7,9 +7,10 @@ import {
   type Canvas,
   Rect,
   Path,
+  type StaticCanvas,
 } from 'fabric';
 import { CardData } from '../contexts/fileDropper';
-import type { templateType, templateTypeV2 } from '../resourcesTypedef';
+import type { templateTypeV2 } from '../resourcesTypedef';
 import { extractUniqueColorsFromGroup } from './templateHandling';
 
 FabricObject.ownDefaults.originX = 'center';
@@ -51,6 +52,13 @@ declare module "fabric" {
   }
 }
 
+export const getPlaceholderMain = (canvas: Canvas | Group | StaticCanvas) => canvas.getObjects().find((obj) => obj["zaparoo-placeholder"] === "main")
+
+export const getMainImage = (canvas: Canvas | Group | StaticCanvas) => canvas.getObjects('image')
+.find(
+  (fabricImage) =>
+    (fabricImage as FabricImage).resourceType === 'main',
+) as FabricImage;
 
 export const scaleImageToOverlayArea = async (
   placeholder: FabricObject,
@@ -115,7 +123,7 @@ const parseSvg = (url: string): Promise<Group> =>
 
 const reposition = (
   fabricLayer: FabricObject,
-  template: templateType,
+  template: templateTypeV2,
 ): void => {
   if (template.layout === 'horizontal') {
     fabricLayer.left = template.media.width / 2;
@@ -134,7 +142,7 @@ export const setTemplateV2OnCanvases = async (
   const { layout, url, parsed, media } = template;
 
   const templateSource = await (parsed ?? (template.parsed = parseSvg(url)));
-  const placeholder = templateSource.getObjects().find((obj) => obj["zaparoo-placeholder"] === "main");
+  const placeholder = getPlaceholderMain(templateSource);
   if (placeholder) {
       // remove strokewidth so the placeholder can clip the image
       placeholder.strokeWidth = 0;
@@ -204,7 +212,7 @@ export const setTemplateV2OnCanvases = async (
     // add the template to the canvas
     canvas.add(...fabricLayer.removeAll());
     // find the layer that olds the image.
-    const placeholder = canvas.getObjects().find((obj) => obj["zaparoo-placeholder"] === "main");
+    const placeholder = getPlaceholderMain(canvas);
     if (placeholder) {
       // add the image on the placeholder
       if (mainImage) {

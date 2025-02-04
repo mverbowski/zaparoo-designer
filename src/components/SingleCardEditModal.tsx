@@ -3,12 +3,13 @@ import './SingleCardEditModal.css';
 import Button from '@mui/material/Button';
 import { useFileDropperContext } from '../contexts/fileDropper';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Canvas, FabricImage, type FabricObject, type Group } from 'fabric';
+import { Canvas, FabricImage, type FabricObject } from 'fabric';
 import { useRealTimeResize } from '../hooks/useRealtimeResize';
 import { type TemplateEdit } from '../resourcesTypedef';
 import { ResourceDisplay } from './ResourceDisplay';
 import { ImageAdjust } from './ImageAdjust';
 import { fixImageInsideCanvas } from '../utils/fixImageInsideCanvas';
+import { getMainImage } from '../utils/setTemplateV2';
 
 type SingleCardEditSpaceProps = {
   onClose: () => void;
@@ -45,10 +46,6 @@ export const ModalInternalComponent = ({
 
   const confirmAndClose = useCallback(async () => {
     const canvas = editableCanvas.current!;
-    const [group] = canvas.getObjects('group');
-    canvas.remove(group);
-    canvas.overlayImage = group;
-    group.canvas = canvas;
     const data = canvas.toObject([
       'resourceFor',
       'id',
@@ -78,62 +75,52 @@ export const ModalInternalComponent = ({
           'original_stroke',
         ]);
         canvas.loadFromJSON(jsonData).then(() => {
-          if (canvas.overlayImage) {
-            const overlay = canvas.overlayImage;
-            canvas.overlayImage = undefined;
-            overlay.controls = {};
-            overlay.lockMovementX = true;
-            overlay.lockMovementY = true;
-            overlay.perPixelTargetFind = true;
-            (overlay as Group).subTargetCheck = true;
-            overlay.on('mousedown', (opt) => {
-              const resource = opt.subTargets?.[0];
-              // @ts-expect-error not sure what to do here
-              if (resource && resource.resourceFor) {
-                const edit = selectedCard.template?.edits?.find(
-                  // @ts-expect-error not sure what to do here
-                  (edit) => edit.id === resource.resourceFor,
-                );
-                if (edit) {
-                  setCurrentResource([edit, resource]);
-                }
-              }
-            });
-            canvas.add(overlay);
-            const [mainImage] = canvas.getObjects('image') as FabricImage[];
-            if (mainImage) {
-              mainImage.hasControls = false;
-              mainImage.hasBorders = false;
-              mainImage.strokeWidth = 0;
-              mainImage.imageSmoothing = false;
-            }
-            canvas.on('selection:created', ({ selected }) => {
-              if (selected[0] instanceof FabricImage) {
-                setImageAdjust(true);
-                setCurrentResource([undefined, undefined]);
-              } else {
-                setImageAdjust(false);
-              }
-            });
-            canvas.on('selection:cleared', ({ deselected }) => {
-              if (deselected[0] instanceof FabricImage) {
-                setImageAdjust(false);
-              }
-            });
-            canvas.on('selection:updated', ({ selected }) => {
-              if (selected[0] instanceof FabricImage) {
-                setImageAdjust(true);
-                setCurrentResource([undefined, undefined]);
-              } else {
-                setImageAdjust(false);
-              }
-            });
-            canvas.on('object:moving', ({ target }) => {
-              if (target instanceof FabricImage) {
-                fixImageInsideCanvas(target, selectedCard.template!);
-              }
-            });
+          const mainImage = getMainImage(canvas);
+          if (mainImage) {
+            mainImage.hasControls = false;
+            mainImage.hasBorders = false;
+            mainImage.strokeWidth = 0;
+            mainImage.imageSmoothing = false;
           }
+          // canvas.on('mouse:down', (opt) => {
+          // const resource = opt.subTargets?.[0];
+          // if (resource && resource.resourceFor) {
+          //   const edit = selectedCard.template?.edits?.find(
+          //     // @ts-expect-error not sure what to do here
+          //     (edit) => edit.id === resource.resourceFor,
+          //   );
+          //   if (edit) {
+          //     setCurrentResource([edit, resource]);
+          //   }
+          // }
+          // });
+
+          canvas.on('selection:created', ({ selected }) => {
+            if (selected[0] instanceof FabricImage) {
+              setImageAdjust(true);
+              setCurrentResource([undefined, undefined]);
+            } else {
+              setImageAdjust(false);
+            }
+          });
+          canvas.on('selection:cleared', ({ deselected }) => {
+            if (deselected[0] instanceof FabricImage) {
+              setImageAdjust(false);
+            }
+          });
+          canvas.on('selection:updated', ({ selected }) => {
+            if (selected[0] instanceof FabricImage) {
+              setImageAdjust(true);
+              setCurrentResource([undefined, undefined]);
+            } else {
+              setImageAdjust(false);
+            }
+          });
+          canvas.on('object:moving', ({ target }) => {
+            if (target instanceof FabricImage) {
+              fixImageInsideCanvas(target);
+            }
+          });
           setReady(true);
         });
       }
@@ -142,7 +129,7 @@ export const ModalInternalComponent = ({
         canvas && canvas.dispose();
       };
     }
-  }, [cards, currentCardIndex]);
+  }, [cards, currentCardIndex, selectedCard.canvas]);
   const classNameExt =
     layout === 'vertical' ? 'horizontalStack' : 'verticalStack';
   const classNameInt =
