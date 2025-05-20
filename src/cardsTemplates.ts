@@ -35,6 +35,7 @@ import type { templateTypeV2 } from './resourcesTypedef';
 
 import {
   NFCCCsizeCard,
+  NFCCCsizeSlimCard,
   TapeBoxCover,
   tapToPrePrinted,
   miniNfcCard,
@@ -49,6 +50,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'Game card Vertical',
     author: Authors.tim,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'gameCardV',
   },
   tapto2: {
@@ -58,6 +60,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'Tap-to H',
     author: Authors.tim,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'tapto2',
   },
   tapto3: {
@@ -67,6 +70,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'Tap-to V',
     author: Authors.tim,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'tapto3',
   },
   hucard: {
@@ -76,6 +80,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'HuCard',
     author: Authors.tim,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'hucard',
   },
   hucardsteam: {
@@ -85,6 +90,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'HuCardSteam',
     author: Authors.ewrt,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'hucardsteam',
   },
   hucardsteamVR: {
@@ -94,6 +100,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'HuCardSteamVR',
     author: Authors.ewrt,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'hucardsteamVR',
   },
   hucardc64: {
@@ -103,6 +110,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'HuCard (C64)',
     author: Authors.ben,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'hucardc64',
   },
   taptoGB: {
@@ -112,6 +120,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'Tap-to Gameboy',
     author: Authors.ariel,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'taptoGB',
   },
   taptoFloppy: {
@@ -121,6 +130,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'Floppy 3.5',
     author: Authors.andrea,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'taptoFloppy',
   },
   taptoFloppy525: {
@@ -130,6 +140,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'Floppy 5.25',
     author: Authors.andrea,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'taptoFloppy525',
   },
   tapToNes: {
@@ -139,6 +150,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'Nes',
     author: Authors.ariel,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'tapToNes',
   },
   tapToGenesis: {
@@ -148,6 +160,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'Genesis',
     author: Authors.ariel,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'tapToGenesis',
   },
   tapToPcEngine: {
@@ -157,6 +170,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'PcEngineCD',
     author: Authors.ariel,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'tapToPcEngine',
   },
   anime0taku: {
@@ -173,6 +187,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'full image + system',
     author: Authors.animeotaku,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'anime0taku',
   },
   cassetteBox: {
@@ -182,6 +197,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'Casset box placeholder',
     author: Authors.animeotaku, // to be changed with Phoneix data
     media: TapeBoxCover,
+    compatibleMedia: [TapeBoxCover],
     key: 'cassetteBoxBlank',
   },
   cassetteBoxV2: {
@@ -192,6 +208,7 @@ export const templates: Record<string, templateTypeV2> = {
     canEdit: true,
     author: Authors.animeotaku, // to be changed with Phoneix data
     media: TapeBoxCover,
+    compatibleMedia: [TapeBoxCover],
     key: 'cassetteBoxV2',
   },
   miniNfcAlice: {
@@ -201,6 +218,7 @@ export const templates: Record<string, templateTypeV2> = {
     url: mininfcAlice,
     author: Authors.alice,
     media: miniNfcCard,
+    compatibleMedia: [miniNfcCard],
     key: 'miniNfcAlice',
   },
   retroRemakePcb1: {
@@ -211,6 +229,7 @@ export const templates: Record<string, templateTypeV2> = {
     url: r2PcbCardFront,
     author: Authors.wizzo,
     media: r2Pcb1_0,
+    compatibleMedia: [r2Pcb1_0],
     key: 'retroRemakePcb1',
   },
   upgradeStickerT1: {
@@ -221,6 +240,7 @@ export const templates: Record<string, templateTypeV2> = {
     url: upgradeStickerZTCSFull,
     author: Authors.tim,
     media: tapToPrePrinted,
+    compatibleMedia: [tapToPrePrinted],
     key: 'upgradeStickerT1',
   },
   upgradeStickerT2: {
@@ -231,6 +251,7 @@ export const templates: Record<string, templateTypeV2> = {
     url: upgradeStickerZTCSFrame,
     author: Authors.tim,
     media: tapToPrePrinted,
+    compatibleMedia: [tapToPrePrinted],
     key: 'upgradeStickerT2',
   },
   upgradeStickerT6: {
@@ -241,6 +262,7 @@ export const templates: Record<string, templateTypeV2> = {
     url: upgradeStickerZTCSRounded,
     author: Authors.tim,
     media: tapToPrePrinted,
+    compatibleMedia: [tapToPrePrinted],
     key: 'upgradeStickerT6',
   },
   upgradeStickerT3: {
@@ -251,6 +273,7 @@ export const templates: Record<string, templateTypeV2> = {
     url: upgradeStickerZTCDFull,
     author: Authors.tim,
     media: tapToPrePrinted,
+    compatibleMedia: [tapToPrePrinted],
     key: 'upgradeStickerT3',
   },
   upgradeStickerT4: {
@@ -261,6 +284,7 @@ export const templates: Record<string, templateTypeV2> = {
     url: upgradeStickerZTCDFrame,
     author: Authors.tim,
     media: tapToPrePrinted,
+    compatibleMedia: [tapToPrePrinted],
     key: 'upgradeStickerT4',
   },
   upgradeStickerT5: {
@@ -271,6 +295,7 @@ export const templates: Record<string, templateTypeV2> = {
     url: upgradeStickerZTCDRounded,
     author: Authors.tim,
     media: tapToPrePrinted,
+    compatibleMedia: [tapToPrePrinted],
     key: 'upgradeStickerT5',
   },
   blankH: {
@@ -279,6 +304,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'Blank H cover',
     author: Authors.andrea,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'blankH',
     url: blankCoverH,
   },
@@ -288,6 +314,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'Blank V cover',
     author: Authors.andrea,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'blankV',
     url: blankCoverV,
   },
@@ -298,6 +325,7 @@ export const templates: Record<string, templateTypeV2> = {
     url: blankFitH,
     author: Authors.andrea,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'blankHF',
   },
   blankVF: {
@@ -306,6 +334,7 @@ export const templates: Record<string, templateTypeV2> = {
     label: 'Blank V fit',
     author: Authors.andrea,
     media: NFCCCsizeCard,
+    compatibleMedia: [NFCCCsizeCard, NFCCCsizeSlimCard],
     key: 'blankVF',
     url: blankFitV,
   },

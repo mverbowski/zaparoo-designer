@@ -76,6 +76,7 @@ export type templateTypeV2 = {
   /* a reference to the author data */
   author: Authors;
   media: MediaDefinition;
-  printableAreas?: PrintableArea[],
+  compatibleMedia: MediaDefinition[]
+  printableAreas?: PrintableArea[];
   key: string;
 };
