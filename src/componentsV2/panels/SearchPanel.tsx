@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   TextField,
   Typography,
@@ -30,7 +31,6 @@ import { PlatformResult } from '../../../netlify/apiProviders/types.mts';
 import type { SearchResult } from '../../../netlify/apiProviders/types.mts';
 import { PanelSection } from './PanelSection';
 import SearchIcon from '@mui/icons-material/Search';
-import { BehindEditor } from './RequireEditing';
 
 const SearchResultView = ({
   gameEntry,
@@ -39,6 +39,10 @@ const SearchResultView = ({
   addImage,
   description,
   useFull = false,
+  loading = false,
+  tooltipOpen,
+  onTooltipOpen,
+  onTooltipClose,
 }: {
   useFull?: boolean;
   gameEntry: SearchResult;
@@ -53,6 +57,10 @@ const SearchResultView = ({
     url: string,
     game: SearchResult,
   ) => void;
+  loading?: boolean;
+  tooltipOpen: boolean;
+  onTooltipOpen: () => void;
+  onTooltipClose: () => void;
 }) => {
   const imgRef = useRef<HTMLImageElement | null>(null);
   const handleDragStart: DragEventHandler<HTMLDivElement> = (event) => {
@@ -68,17 +76,29 @@ const SearchResultView = ({
     }
   };
 
-  // console.log(gameEntry);
   return (
     <div className="searchResult" draggable onDragStart={handleDragStart}>
-      <Tooltip title={description} placement="top">
+      <Tooltip
+        title={description}
+        placement="top"
+        open={tooltipOpen}
+        onOpen={onTooltipOpen}
+        onClose={onTooltipClose}
+      >
         <Button sx={{ backgroundColor: 'transparent', padding: 0 }}>
-          <img
-            ref={imgRef}
-            src={useFull ? imgSource.url : imgSource.thumb}
-            onClick={(e) => addImage(e, imgSource.url, gameEntry)}
-            style={{ cursor: 'pointer' }}
-          />
+          <div className="searchResultImageWrapper">
+            <img
+              ref={imgRef}
+              src={useFull ? imgSource.url : imgSource.thumb}
+              onClick={(e) => addImage(e, imgSource.url, gameEntry)}
+              style={{ cursor: 'pointer' }}
+            />
+            {loading && (
+              <div className="searchResultLoadingOverlay">
+                <CircularProgress color="secondary" size={32} />
+              </div>
+            )}
+          </div>
         </Button>
       </Tooltip>
       {children}
@@ -88,10 +108,13 @@ const SearchResultView = ({
 
 export default function ImageSearchPanel({
   isEditing = false,
+  onSelectGame,
 }: {
   isEditing: boolean;
+  onSelectGame?: () => void;
 }) {
-  const { addFiles } = useFileDropperContext();
+  const { addFiles, editingCard, cards, swapGameAtIndex } =
+    useFileDropperContext();
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [gameEntries, setGameEntries] = useState<SearchResult[]>([]);
@@ -105,14 +128,25 @@ export default function ImageSearchPanel({
     abbreviation: 'All',
   });
   const [openGameId] = useState<SearchResult['id']>('0');
+  const [loadingGameId, setLoadingGameId] = useState<string | null>(null);
+  const [tooltipGameId, setTooltipGameId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const timerRef = useRef(0);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const SEARCH_THROTTLING = 1000;
 
   const { ref, inView } = useInView({
     /* Optional options */
     threshold: 0.9,
   });
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const handleScroll = () => setTooltipGameId(null);
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     document.getElementById(`sub-${openGameId}`)?.scrollIntoView(true);
@@ -126,13 +160,28 @@ export default function ImageSearchPanel({
   const addImage = useCallback(
     (e: MouseEvent<HTMLImageElement>, url: string, game: SearchResult) => {
       const target = e.target as HTMLImageElement;
-      getImage(url, target.src).then((file) => {
-        startTransition(() => {
-          addFiles([file], [game]);
+      setLoadingGameId(game.id);
+      if (isEditing && editingCard) {
+        const editingIndex = cards.current.indexOf(editingCard);
+        if (editingIndex === -1) {
+          setLoadingGameId(null);
+          return;
+        }
+        getImage(url, target.src).then((file) => {
+          swapGameAtIndex(file, game, editingIndex);
+          onSelectGame?.();
+          setLoadingGameId(null);
         });
-      });
+      } else {
+        getImage(url, target.src).then((file) => {
+          startTransition(() => {
+            addFiles([file], [game]);
+          });
+          setLoadingGameId(null);
+        });
+      }
     },
-    [addFiles],
+    [addFiles, isEditing, editingCard, cards, swapGameAtIndex, onSelectGame],
   );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -191,7 +240,6 @@ export default function ImageSearchPanel({
 
   return (
     <PanelSection title="Search" className="searchPanel">
-      {isEditing && <BehindEditor />}
       <div className="horizontalStack searchHeader" key="search-header">
         <TextField
           color="primary"
@@ -202,7 +250,7 @@ export default function ImageSearchPanel({
           value={searchQuery}
           onChange={(evt) => setSearchQuery(evt.target.value)}
           style={{ fontWeight: 400, fontSize: 14 }}
-          onKeyDown={(e: any) => {
+          onKeyDown={(e: React.KeyboardEvent) => {
             e.key === 'Enter' && executeSearchWithReset(e);
           }}
         />
@@ -239,8 +287,19 @@ export default function ImageSearchPanel({
           Fanmade
         </Typography>
       </div>
-      <div className="searchResultsContainer horizontalStack" key="container">
-        {/* {disclaimer} */}
+      {isEditing && editingCard?.game?.name && (
+        <Alert
+          severity="success"
+          sx={{ width: '100%', boxSizing: 'border-box' }}
+        >
+          Current: {editingCard.game.name}
+        </Alert>
+      )}
+      <div
+        className="searchResultsContainer horizontalStack"
+        key="container"
+        ref={scrollContainerRef}
+      >
         {gameEntries.map((gameEntry: SearchResult) => (
           <Fragment key={`game-${gameEntry.id}`}>
             {gameEntry.id !== openGameId && (
@@ -251,6 +310,10 @@ export default function ImageSearchPanel({
                 gameEntry={gameEntry}
                 imgSource={gameEntry.cover}
                 addImage={addImage}
+                loading={loadingGameId === gameEntry.id}
+                tooltipOpen={tooltipGameId === gameEntry.id}
+                onTooltipOpen={() => setTooltipGameId(gameEntry.id)}
+                onTooltipClose={() => setTooltipGameId(null)}
               >
                 <Typography variant="h6" color="secondary">
                   + {gameEntry.extra_images} images

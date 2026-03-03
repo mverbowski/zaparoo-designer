@@ -1,4 +1,5 @@
 import {
+  CircularProgress,
   FormControl,
   InputLabel,
   Select,
@@ -18,6 +19,8 @@ type StaticLogo = {
   name: string;
   style: string;
   category: string;
+  width: number;
+  height: number;
 };
 
 type LogoTabsProps = {
@@ -30,6 +33,7 @@ export const LogoTabs = ({ canvasRef, isEditing, hasCards }: LogoTabsProps) => {
   const [value, setValue] = useState(0);
   const [keyword, setKeyword] = useState('');
   const [logos, setLogos] = useState<StaticLogo[]>([]);
+  const hasLogos = logos.length > 0;
 
   useEffect(() => {
     logoStyles[0].getter().then((data) => setLogos(data));
@@ -43,7 +47,7 @@ export const LogoTabs = ({ canvasRef, isEditing, hasCards }: LogoTabsProps) => {
   );
 
   return (
-    <PanelSection title="Company logos">
+    <PanelSection title="Company logos" className={!hasLogos ? 'panelLoading' : ''}>
       {hasCards && !isEditing && <SuggestDrag />}
       {hasCards && isEditing && <SuggestClick />}
       {hasCards || <RequireCards />}
@@ -69,6 +73,7 @@ export const LogoTabs = ({ canvasRef, isEditing, hasCards }: LogoTabsProps) => {
             onChange={async (event) => {
               const val = event.target.value;
               setValue(val);
+              setLogos([]);
               setLogos(await logoStyles[val].getter());
             }}
           >
@@ -80,7 +85,10 @@ export const LogoTabs = ({ canvasRef, isEditing, hasCards }: LogoTabsProps) => {
           </Select>
         </FormControl>
       </div>
-      <div className="resourceListAreaLogos">
+      <div className={`resourceListAreaLogos ${!hasLogos ? 'loadingArea' : ''}`}>
+        {!hasLogos && (
+          <CircularProgress />
+        )}
         {logos.map(
           (logo) =>
             logo.name.toLowerCase().includes(keyword) && (
@@ -88,7 +96,7 @@ export const LogoTabs = ({ canvasRef, isEditing, hasCards }: LogoTabsProps) => {
                 blocked={!hasCards}
                 key={logo.url}
                 canvasRef={canvasRef}
-                imageResult={{ url: logo.url, width: 400, height: 400 }}
+                imageResult={{ url: logo.url, width: logo.width, height: logo.height }}
               />
             ),
         )}

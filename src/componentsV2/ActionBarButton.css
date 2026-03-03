@@ -7,3 +7,12 @@
   max-height: var(--action-bar-width);
   padding: 0;
 }
+
+.actionBarButton:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.actionBarButtonWrapper {
+  display: inline-flex;
+}
