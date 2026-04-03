@@ -13,7 +13,6 @@ import { useFileDropperContext } from '../contexts/fileDropper';
 import './LabelsView.css';
 import { Button, Typography } from '@mui/material';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
-import SearchIcon from '@mui/icons-material/Search';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import BackupTableIcon from '@mui/icons-material/BackupTable';
 import { ActionBarButton } from './ActionBarButton';
@@ -34,6 +33,7 @@ import {
 } from './panelReducer';
 import { selectAllCards, clearCardSelection } from './cardSelection';
 import { noop } from '../utils/utils';
+import { IgdbSourceIcon, SteamGridDbSourceIcon } from './SourceIcons';
 
 const LogoTabs = lazy(() => import('./panels/LogosTabs'));
 const HardwareResourcesPanel = lazy(
@@ -43,6 +43,7 @@ const TemplatePanel = lazy(() => import('./panels/TemplatePanel'));
 const GameResourcesPanel = lazy(() => import('./panels/GameResourcesPanel'));
 const LayersPanel = lazy(() => import('./panels/LayersPanel'));
 const ColorsPanel = lazy(() => import('./panels/ColorsPanel'));
+const SteamPanel = lazy(() => import('./panels/SteamPanel'));
 const SingleCardEditModal = lazy(() => import('./SingleCardEditModal'));
 
 const loadFontsForCanvas = async () => {
@@ -133,11 +134,18 @@ export const LabelsView = () => {
           <BackupTableIcon width="24" height="24" />
         </ActionBarButton>
         <ActionBarButton
-          label="SEARCH"
+          label="IGDB"
           onClick={() => setPanel(panels.Search)}
           selected={panel === panels.Search}
         >
-          <SearchIcon width="24" height="24" />
+          <IgdbSourceIcon />
+        </ActionBarButton>
+        <ActionBarButton
+          label="STEAM"
+          onClick={() => setPanel(panels.Steam)}
+          selected={panel === panels.Steam}
+        >
+          <SteamGridDbSourceIcon />
         </ActionBarButton>
         <ActionBarButton
           label="GAME"
@@ -197,6 +205,14 @@ export const LabelsView = () => {
         <Suspense fallback={null}>
           {panel === panels.Search && (
             <ImageSearchPanel
+              editingCanvasRef={canvasRef}
+              isEditing={isEditing}
+              onSelectGame={() => setPanel(panels.Resources)}
+            />
+          )}
+          {panel === panels.Steam && (
+            <SteamPanel
+              editingCanvasRef={canvasRef}
               isEditing={isEditing}
               onSelectGame={() => setPanel(panels.Resources)}
             />
@@ -209,6 +225,9 @@ export const LabelsView = () => {
               game={editingCard?.game}
               canvasRef={canvasRef}
             />
+          )}
+          {panel === panels.Edit && (
+            <LayersPanel canvasRef={canvasRef} hasCards={hasCards} />
           )}
           {panel === panels.Logos && (
             <LogoTabs
@@ -230,9 +249,6 @@ export const LabelsView = () => {
               hasSelection={hasSelection}
               hasCards={hasCards}
             />
-          )}
-          {panel === panels.Edit && (
-            <LayersPanel canvasRef={canvasRef} hasCards={hasCards} />
           )}
           {import.meta.env.DEV && panel === panels.FilesUtils && (
             <>

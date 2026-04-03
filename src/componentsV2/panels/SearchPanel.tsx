@@ -5,7 +5,6 @@ import {
   Typography,
   Checkbox,
   CircularProgress,
-  Tooltip,
 } from '@mui/material';
 
 import {
@@ -16,100 +15,30 @@ import {
   useRef,
   Fragment,
   useCallback,
-  DragEventHandler,
+  type MutableRefObject,
 } from 'react';
 import { useFileDropperContext } from '../../contexts/fileDropper';
 
 import { boxShadow } from '../../constants';
-import { DRAG_MIME_GAME_OBJECT } from '../../constants/dragDrop';
 import { useInView } from 'react-intersection-observer';
 
 import './SearchPanel.css';
-import { fetchGameList, getImage } from '../../utils/search';
+import { fetchGameList } from '../../utils/search';
 import { PlatformResult } from '../../../netlify/apiProviders/types.mts';
 // import { PlatformDropdown } from './PlatformDropdown';
 import type { SearchResult } from '../../../netlify/apiProviders/types.mts';
 import { PanelSection } from './PanelSection';
 import SearchIcon from '@mui/icons-material/Search';
-
-const SearchResultView = ({
-  gameEntry,
-  imgSource,
-  children,
-  addImage,
-  description,
-  useFull = false,
-  loading = false,
-  tooltipOpen,
-  onTooltipOpen,
-  onTooltipClose,
-}: {
-  useFull?: boolean;
-  gameEntry: SearchResult;
-  imgSource: {
-    thumb: string;
-    url: string;
-  };
-  description?: string;
-  children?: JSX.Element;
-  addImage: (
-    e: MouseEvent<HTMLImageElement>,
-    url: string,
-    game: SearchResult,
-  ) => void;
-  loading?: boolean;
-  tooltipOpen: boolean;
-  onTooltipOpen: () => void;
-  onTooltipClose: () => void;
-}) => {
-  const imgRef = useRef<HTMLImageElement | null>(null);
-  const handleDragStart: DragEventHandler<HTMLDivElement> = (event) => {
-    const dataObject = JSON.stringify(gameEntry);
-    event.dataTransfer.setData(DRAG_MIME_GAME_OBJECT, dataObject);
-    event.dataTransfer.setData('text/uri-list', dataObject);
-    event.dataTransfer.setData('text/plain', dataObject);
-    event.dataTransfer.effectAllowed = 'copy';
-    if (imgRef.current) {
-      const offsetX = Math.max(0, imgRef.current.width / 2);
-      const offsetY = Math.max(0, imgRef.current.height / 2);
-      event.dataTransfer.setDragImage(imgRef.current, offsetX, offsetY);
-    }
-  };
-
-  return (
-    <div className="searchResult" draggable onDragStart={handleDragStart}>
-      <Tooltip
-        title={description}
-        placement="top"
-        open={tooltipOpen}
-        onOpen={onTooltipOpen}
-        onClose={onTooltipClose}
-      >
-        <Button sx={{ backgroundColor: 'transparent', padding: 0 }}>
-          <div className="searchResultImageWrapper">
-            <img
-              ref={imgRef}
-              src={useFull ? imgSource.url : imgSource.thumb}
-              onClick={(e) => addImage(e, imgSource.url, gameEntry)}
-              style={{ cursor: 'pointer' }}
-            />
-            {loading && (
-              <div className="searchResultLoadingOverlay">
-                <CircularProgress color="secondary" size={32} />
-              </div>
-            )}
-          </div>
-        </Button>
-      </Tooltip>
-      {children}
-    </div>
-  );
-};
+import { SearchResultCard } from './SearchResultCard';
+import { applySearchResultToCards } from './searchResultActions';
+import { type Canvas } from 'fabric';
 
 export default function ImageSearchPanel({
+  editingCanvasRef,
   isEditing = false,
   onSelectGame,
 }: {
+  editingCanvasRef?: MutableRefObject<Canvas | null>;
   isEditing: boolean;
   onSelectGame?: () => void;
 }) {
@@ -161,27 +90,30 @@ export default function ImageSearchPanel({
     (e: MouseEvent<HTMLImageElement>, url: string, game: SearchResult) => {
       const target = e.target as HTMLImageElement;
       setLoadingGameId(game.id);
-      if (isEditing && editingCard) {
-        const editingIndex = cards.current.indexOf(editingCard);
-        if (editingIndex === -1) {
-          setLoadingGameId(null);
-          return;
-        }
-        getImage(url, target.src).then((file) => {
-          swapGameAtIndex(file, game, editingIndex);
-          onSelectGame?.();
-          setLoadingGameId(null);
-        });
-      } else {
-        getImage(url, target.src).then((file) => {
-          startTransition(() => {
-            addFiles([file], [game]);
-          });
-          setLoadingGameId(null);
-        });
-      }
+      void applySearchResultToCards({
+        addFiles,
+        cards: cards.current,
+        editingCard: isEditing ? editingCard : null,
+        editingCanvas: editingCanvasRef?.current ?? null,
+        game,
+        onSelectGame,
+        previewSrc: target.src,
+        scheduleAddFiles: startTransition,
+        swapGameAtIndex,
+        url,
+      }).finally(() => {
+        setLoadingGameId(null);
+      });
     },
-    [addFiles, isEditing, editingCard, cards, swapGameAtIndex, onSelectGame],
+    [
+      addFiles,
+      isEditing,
+      editingCard,
+      cards,
+      swapGameAtIndex,
+      onSelectGame,
+      editingCanvasRef,
+    ],
   );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -305,7 +237,7 @@ export default function ImageSearchPanel({
         {gameEntries.map((gameEntry: SearchResult) => (
           <Fragment key={`game-${gameEntry.id}`}>
             {gameEntry.id !== openGameId && (
-              <SearchResultView
+              <SearchResultCard
                 description={`${gameEntry.name} - ${gameEntry.platforms
                   ?.map((p) => p.abbreviation)
                   .join(', ')}`}
@@ -320,7 +252,7 @@ export default function ImageSearchPanel({
                 <Typography variant="h6" color="secondary">
                   + {gameEntry.extra_images} images
                 </Typography>
-              </SearchResultView>
+              </SearchResultCard>
             )}
           </Fragment>
         ))}
