@@ -286,7 +286,6 @@ export default function SteamPanel({
         loading={isLoading}
         value={selectedGame}
         inputValue={searchQuery}
-        filterOptions={(x) => x}
         onInputChange={(_event, value) => setSearchQuery(value)}
         onChange={(_event, value) => setSelectedGame(value)}
         isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -320,9 +319,9 @@ export default function SteamPanel({
           />
         )}
         renderOption={(props, option) => {
-          const { key, ...optionProps } = props;
+          const { ...optionProps } = props;
           return (
-            <li key={key} {...optionProps}>
+            <li {...optionProps} key={option.id}>
               <Typography color="secondary">{option.name}</Typography>
             </li>
           );
