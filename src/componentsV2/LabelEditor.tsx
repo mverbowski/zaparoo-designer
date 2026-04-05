@@ -71,6 +71,16 @@ export const LabelEditor = ({
   const handleDragEnter = (event: ReactDragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragOver(true);
+    const { canvas } = card;
+    if (canvas) {
+      const placeHolders = canvas
+        .getObjects()
+        .filter((obj) => !!obj['zaparoo-placeholder']);
+      placeHolders.forEach((obj) => {
+        obj.visible = true;
+      });
+      canvas.requestRenderAll();
+    }
   };
 
   const handleDragLeave = (event: ReactDragEvent<HTMLDivElement>) => {
@@ -82,6 +92,16 @@ export const LabelEditor = ({
       return;
     }
     setIsDragOver(false);
+    const { canvas } = card;
+    if (canvas) {
+      const placeHolders = canvas
+        .getObjects()
+        .filter((obj) => !!obj['zaparoo-placeholder']);
+      placeHolders.forEach((obj) => {
+        obj.visible = false;
+      });
+      canvas.requestRenderAll();
+    }
   };
 
   const handleDrop = (event: ReactDragEvent<HTMLDivElement>) => {
@@ -90,6 +110,8 @@ export const LabelEditor = ({
     const imageUrl = event.dataTransfer.getData(DRAG_MIME_IMAGE_URL);
     const { canvas } = card;
     if (imageUrl && canvas) {
+      console.log(event, event.clientX, canvas?.calcOffset());
+
       util.loadImage(imageUrl).then((img) => {
         if (canvas) {
           const image = new FabricImage(img, {

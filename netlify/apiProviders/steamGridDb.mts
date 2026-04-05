@@ -29,11 +29,15 @@ export interface SGDBImage {
 }
 
 export type SGDBGridData = {
-  data?: SGDBImage[];
+  data: SGDBImage[];
+  total: number;
+  page: number;
 };
 
 export type SGDBLogoData = {
-  data?: SGDBImage[];
+  data: SGDBImage[];
+  total: number;
+  page: number;
 };
 
 export type SGDBGridStyle =
@@ -55,12 +59,14 @@ export type SGDBGridDimension =
 export type SGDBGridQueryOptions = {
   styles?: SGDBGridStyle[];
   dimensions?: SGDBGridDimension[];
+  page?: number;
 };
 
 export type SGDBLogoStyle = 'official' | 'white' | 'black' | 'custom';
 
 export type SGDBLogoQueryOptions = {
   style?: SGDBLogoStyle[];
+  page?: number;
 };
 
 const toResultImage = (image: SGDBImage): ResultImage => ({
@@ -77,9 +83,10 @@ const convertAssetsToSearchResults = (
   gameName = 'SteamGridDB',
 ): SearchResults => {
   const grids = Array.isArray(data.data) ? data.data : [];
+  const { total } = data;
 
   return {
-    count: grids.length,
+    count: total,
     results: grids.map((grid): SearchResult => {
       const cover = toResultImage(grid);
       const summaryBits = [
@@ -116,15 +123,17 @@ export const convertLogosToSearchResults = (
   gameName = 'SteamGridDB',
 ): SearchResults => convertAssetsToSearchResults(data, gameName);
 
-const setArraySearchParam = (
-  url: URL,
-  key: string,
-  values?: string[],
-) => {
+const setArraySearchParam = (url: URL, key: string, values?: string[]) => {
   const filteredValues = values?.filter(Boolean);
 
   if (filteredValues && filteredValues.length > 0) {
     url.searchParams.set(key, filteredValues.join(','));
+  }
+};
+
+const setNumberSearchParam = (url: URL, key: string, value?: number) => {
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+    url.searchParams.set(key, `${value}`);
   }
 };
 
@@ -158,6 +167,7 @@ export class SGDBProvider {
     const url = new URL(gridsPath, this.endpoint);
     setArraySearchParam(url, 'styles', options.styles);
     setArraySearchParam(url, 'dimensions', options.dimensions);
+    setNumberSearchParam(url, 'page', options.page);
 
     return new Request(url, {
       method: 'GET',
@@ -172,6 +182,7 @@ export class SGDBProvider {
     const logosPath = `/api/v2/logos/game/${gameId}`;
     const url = new URL(logosPath, this.endpoint);
     setArraySearchParam(url, 'style', options.style);
+    setNumberSearchParam(url, 'page', options.page);
 
     return new Request(url, {
       method: 'GET',
