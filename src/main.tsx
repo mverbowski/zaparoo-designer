@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import { AppDataContextProvider } from './providers/AppDataProvider.tsx';
 import { FileDropperContextProvider } from './providers/FileDropperProvider.tsx';
+import { SingleCardSearchProvider } from './providers/SingleCardSearchProvider.tsx';
 import './index.css';
 import { createTheme } from '@mui/material/styles';
 
@@ -53,7 +54,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ThemeProvider theme={theme}>
       <AppDataContextProvider>
         <FileDropperContextProvider>
-          <App />
+          <SingleCardSearchProvider>
+            <App />
+          </SingleCardSearchProvider>
         </FileDropperContextProvider>
       </AppDataContextProvider>
     </ThemeProvider>

@@ -316,6 +316,7 @@ export const LabelsView = () => {
               setCurrentEditingCanvas={setCurrentEditingCanvas}
               isOpen={!!editingCard}
               onClose={onClose}
+              onShowGamePanel={() => setPanel(panels.Resources)}
             />
           )}
         </Suspense>

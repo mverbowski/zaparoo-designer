@@ -28,3 +28,49 @@
 .confirmButtons {
   justify-content: space-between;
 }
+
+.currentGameBar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  margin: 12px 0;
+  background-color: rgba(83, 97, 217, 0.12);
+  border: 1px solid rgba(83, 97, 217, 0.4);
+  border-radius: 8px;
+  outline: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.currentGameBar-clickable {
+  cursor: pointer;
+}
+
+.currentGameBar-clickable:hover,
+.currentGameBar-clickable:focus-visible {
+  background-color: rgba(83, 97, 217, 0.22);
+  border-color: rgba(83, 97, 217, 0.7);
+}
+
+.currentGameLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  opacity: 0.7;
+  font-size: 0.72rem;
+}
+
+.currentGameName {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.currentGamePlatform {
+  opacity: 0.75;
+  font-weight: 400;
+}
+
+.currentGameEmpty {
+  font-size: 0.95rem;
+  opacity: 0.7;
+  font-style: italic;
+}
