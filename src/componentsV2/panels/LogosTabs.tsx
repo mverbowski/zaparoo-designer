@@ -7,7 +7,7 @@ import {
   TextField,
 } from '@mui/material';
 import { logoStyles } from '../../filteredLogos';
-import { type MutableRefObject, useCallback, useEffect, useState } from 'react';
+import { type MutableRefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { type Canvas } from 'fabric';
 import { ImagePanelDisplay } from './ImagePanelDisplay';
 import './LogosTabs.css';
@@ -29,15 +29,31 @@ type LogoTabsProps = {
   hasCards: boolean;
 };
 
+const logoDataCache = new Map<number, StaticLogo[]>();
+
 export const LogoTabs = ({ canvasRef, isEditing, hasCards }: LogoTabsProps) => {
   const [value, setValue] = useState(0);
   const [keyword, setKeyword] = useState('');
   const [logos, setLogos] = useState<StaticLogo[]>([]);
   const hasLogos = logos.length > 0;
+  const isMounted = useRef(true);
 
   useEffect(() => {
-    logoStyles[0].getter().then((data) => setLogos(data));
-  }, [setLogos]);
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+
+  useEffect(() => {
+    const cached = logoDataCache.get(0);
+    if (cached) {
+      setLogos(cached);
+      return;
+    }
+    logoStyles[0].getter().then((data) => {
+      logoDataCache.set(0, data);
+      if (isMounted.current) setLogos(data);
+    });
+  }, []);
 
   const searchHandler = useCallback(
     (evt: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -74,10 +90,17 @@ export const LogoTabs = ({ canvasRef, isEditing, hasCards }: LogoTabsProps) => {
             value={value}
             label="Style"
             onChange={async (event) => {
-              const val = event.target.value;
+              const val = event.target.value as number;
               setValue(val);
+              const cached = logoDataCache.get(val);
+              if (cached) {
+                setLogos(cached);
+                return;
+              }
               setLogos([]);
-              setLogos(await logoStyles[val].getter());
+              const data = await logoStyles[val].getter();
+              logoDataCache.set(val, data);
+              if (isMounted.current) setLogos(data);
             }}
           >
             {logoStyles.map((_, index) => (
