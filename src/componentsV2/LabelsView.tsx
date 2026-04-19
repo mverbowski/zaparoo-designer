@@ -221,10 +221,7 @@ export const LabelsView = () => {
             <TemplatePanel canvasRef={canvasRef} hasCards={hasCards} />
           )}
           {panel === panels.Resources && (
-            <GameResourcesPanel
-              game={editingCard?.game}
-              canvasRef={canvasRef}
-            />
+            <GameResourcesPanel card={editingCard} canvasRef={canvasRef} />
           )}
           {panel === panels.Edit && (
             <LayersPanel currentLayer={currentLayer} canvasRef={canvasRef} hasCards={hasCards} />
