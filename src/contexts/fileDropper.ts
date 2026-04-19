@@ -6,10 +6,18 @@ import type { SearchResult } from '../../netlify/apiProviders/types.mts';
 
 export type PossibleFile = File | HTMLImageElement | null;
 
+/* Match source identifier; add new source keys here as we integrate more databases. */
+export type MatchSource = 'igdb' | 'steam';
+export type CardMatches = Partial<Record<MatchSource, SearchResult>>;
+
 export type CardData = {
   /* the source of the main image */
   file: PossibleFile;
   game: Partial<SearchResult>;
+  /* All known matches for this card, keyed by source. Each is optional. */
+  matches: CardMatches;
+  /* Which source provided the image currently applied to the canvas. */
+  primarySource?: MatchSource;
   canvas?: StaticCanvas;
   /* serialized canvas JSON, used to restore canvas state on load */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,6 +48,13 @@ export type contextType = {
     file: PossibleFile,
     game: SearchResult,
     index: number,
+    source: MatchSource,
+  ) => void;
+  /* Update only a card's match for a given source (no file/image change). */
+  setMatchAtIndex: (
+    source: MatchSource,
+    game: SearchResult,
+    index: number,
   ) => void;
   saveSession: () => void;
   loadSession: () => Promise<void>;
@@ -60,6 +75,7 @@ export const FileDropContext = createContext<contextType>({
   editingCard: null,
   setEditingCard: () => {},
   swapGameAtIndex: () => {},
+  setMatchAtIndex: () => {},
   saveSession: () => {},
   loadSession: async () => {},
 });

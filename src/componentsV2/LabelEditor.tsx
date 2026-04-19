@@ -7,7 +7,11 @@ import {
 } from 'react';
 import { FabricCanvasWrapper } from './FabricCanvasWrapper';
 import { useLabelEditor } from '../hooks/useLabelEditor';
-import { useFileDropperContext, type CardData } from '../contexts/fileDropper';
+import {
+  useFileDropperContext,
+  type CardData,
+  type MatchSource,
+} from '../contexts/fileDropper';
 import { Checkbox, IconButton, Tooltip } from '@mui/material';
 // import EditIcon from '@mui/icons-material/Edit';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
@@ -110,10 +114,20 @@ export const LabelEditor = ({
     const gameObjectRaw = event.dataTransfer.getData(DRAG_MIME_GAME_OBJECT);
     if (gameObjectRaw && canvas) {
       try {
-        const gameObject = JSON.parse(gameObjectRaw) as SearchResult;
+        const parsed = JSON.parse(gameObjectRaw) as
+          | SearchResult
+          | { source: MatchSource; game: SearchResult };
+        const isWrapped =
+          parsed && typeof parsed === 'object' && 'game' in parsed;
+        const gameObject = (isWrapped
+          ? (parsed as { game: SearchResult }).game
+          : (parsed as SearchResult));
+        const source: MatchSource = isWrapped
+          ? (parsed as { source: MatchSource }).source
+          : 'igdb';
         const imageUrl = gameObject.cover.url;
         getImage(imageUrl, imageUrl).then((file) => {
-          swapGameAtIndex(file, gameObject, index);
+          swapGameAtIndex(file, gameObject, index, source);
           void replaceMainImageOnCanvas(canvas, file);
         });
       } catch {

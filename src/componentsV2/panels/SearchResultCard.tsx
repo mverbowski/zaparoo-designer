@@ -1,11 +1,13 @@
 import { Button, CircularProgress, Tooltip } from '@mui/material';
 import { useRef, type DragEventHandler, type MouseEvent } from 'react';
 import type { SearchResult } from '../../../netlify/apiProviders/types.mts';
+import type { MatchSource } from '../../contexts/fileDropper';
 import { DRAG_MIME_GAME_OBJECT } from '../../constants/dragDrop';
 import './SearchPanel.css';
 
 type SearchResultCardProps = {
   gameEntry: SearchResult;
+  source: MatchSource;
   imgSource: {
     thumb: string;
     url: string;
@@ -26,6 +28,7 @@ type SearchResultCardProps = {
 
 export const SearchResultCard = ({
   gameEntry,
+  source,
   imgSource,
   children,
   addImage,
@@ -38,7 +41,7 @@ export const SearchResultCard = ({
 }: SearchResultCardProps) => {
   const imgRef = useRef<HTMLImageElement | null>(null);
   const handleDragStart: DragEventHandler<HTMLDivElement> = (event) => {
-    const dataObject = JSON.stringify(gameEntry);
+    const dataObject = JSON.stringify({ source, game: gameEntry });
     event.dataTransfer.setData(DRAG_MIME_GAME_OBJECT, dataObject);
     event.dataTransfer.setData('text/uri-list', dataObject);
     event.dataTransfer.setData('text/plain', dataObject);

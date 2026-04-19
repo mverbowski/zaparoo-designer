@@ -316,7 +316,9 @@ export const LabelsView = () => {
               setCurrentEditingCanvas={setCurrentEditingCanvas}
               isOpen={!!editingCard}
               onClose={onClose}
-              onShowGamePanel={() => setPanel(panels.Resources)}
+              onShowSourcePanel={(source) =>
+                setPanel(source === 'steam' ? panels.Steam : panels.Search)
+              }
             />
           )}
         </Suspense>

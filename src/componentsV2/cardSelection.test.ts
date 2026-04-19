@@ -6,6 +6,7 @@ const makeCard = (isSelected = false): CardData =>
   ({
     file: null,
     game: {},
+    matches: {},
     isSelected,
     colors: [],
     originalColors: [],

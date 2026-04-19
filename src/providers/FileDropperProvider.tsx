@@ -3,6 +3,7 @@ import type { FC, JSX } from 'react';
 import {
   type CardData,
   FileDropContext,
+  type MatchSource,
   type PossibleFile,
   type contextType,
 } from '../contexts/fileDropper';
@@ -32,6 +33,7 @@ export const FileDropperContextProvider: FC<FileDropperProps> = ({
         ...newFiles.map<CardData>((file, index) => ({
           file,
           game: games[index] || {},
+          matches: {},
           key: `${
             (file as File)?.name || (file as HTMLImageElement)?.src || 'empty'
           }-${Date.now()}`,
@@ -64,6 +66,7 @@ export const FileDropperContextProvider: FC<FileDropperProps> = ({
         ...newFiles.map<CardData>((file, index) => ({
           file,
           game: games[index] || {},
+          matches: {},
           key: `${
             (file as File)?.name || (file as HTMLImageElement)?.src || 'empty'
           }-${Date.now()}`,
@@ -145,12 +148,31 @@ export const FileDropperContextProvider: FC<FileDropperProps> = ({
   );
 
   const swapGameAtIndex = useCallback(
-    async (file: PossibleFile, game: Partial<SearchResult>, index: number) => {
+    async (
+      file: PossibleFile,
+      game: SearchResult,
+      index: number,
+      source: MatchSource,
+    ) => {
       files[index] = file;
-      cards.current[index].game = game;
+      const card = cards.current[index];
+      if (card) {
+        card.game = game;
+        card.matches = { ...card.matches, [source]: game };
+        card.primarySource = source;
+      }
       setFilesImpl([...files]);
     },
     [files],
+  );
+
+  const setMatchAtIndex = useCallback(
+    (source: MatchSource, game: SearchResult, index: number) => {
+      const card = cards.current[index];
+      if (!card) return;
+      card.matches = { ...card.matches, [source]: game };
+    },
+    [],
   );
 
   const saveSession = useCallback(() => {
@@ -179,6 +201,7 @@ export const FileDropperContextProvider: FC<FileDropperProps> = ({
       editingCard,
       setEditingCard,
       swapGameAtIndex,
+      setMatchAtIndex,
       saveSession,
       loadSession,
     }),
@@ -193,6 +216,7 @@ export const FileDropperContextProvider: FC<FileDropperProps> = ({
       editingCard,
       setEditingCard,
       swapGameAtIndex,
+      setMatchAtIndex,
       saveSession,
       loadSession,
     ],

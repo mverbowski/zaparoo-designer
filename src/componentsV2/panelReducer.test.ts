@@ -11,6 +11,7 @@ const makeCard = (game: Record<string, unknown> = {}): CardData =>
   ({
     file: null,
     game,
+    matches: {},
     isSelected: false,
     colors: [],
     originalColors: [],

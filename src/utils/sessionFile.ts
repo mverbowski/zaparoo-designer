@@ -1,5 +1,5 @@
 import { FabricImage, type FabricObject, type StaticCanvas } from 'fabric';
-import type { CardData } from '../contexts/fileDropper';
+import type { CardData, CardMatches, MatchSource } from '../contexts/fileDropper';
 import type { SearchResult } from '../../netlify/apiProviders/types.mts';
 import { templates } from '../cardsTemplates';
 
@@ -92,6 +92,8 @@ type SerializedCard = {
   originalColors: string[];
   templateKey: string | undefined;
   game: Partial<SearchResult>;
+  matches?: CardMatches;
+  primarySource?: MatchSource;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   canvasJSON: Record<string, any> | null;
   canvasWidth: number | null;
@@ -125,6 +127,8 @@ export const serializeSession = (cards: CardData[]): string => {
         originalColors: [...card.originalColors],
         templateKey: card.template?.key,
         game: card.game,
+        matches: card.matches,
+        primarySource: card.primarySource,
         canvasJSON,
         canvasWidth: card.canvas?.getWidth() ?? null,
         canvasHeight: card.canvas?.getHeight() ?? null,
@@ -151,6 +155,8 @@ export const deserializeSession = (json: string): CardData[] => {
     return {
       file: null,
       game: saved.game,
+      matches: saved.matches ?? {},
+      primarySource: saved.primarySource,
       canvas: undefined,
       canvasJSON: saved.canvasJSON ?? undefined,
       canvasWidth: saved.canvasWidth ?? undefined,

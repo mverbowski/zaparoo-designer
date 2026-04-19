@@ -21,6 +21,10 @@ import {
   useSingleCardSearchContext,
   type IgdbSearchCache,
 } from '../../contexts/singleCardSearch';
+import {
+  buildSteamSearchResult,
+  crossFillSteamFromIgdb,
+} from '../../utils/crossSearch';
 
 import { boxShadow } from '../../constants';
 import { useInView } from 'react-intersection-observer';
@@ -45,9 +49,9 @@ export default function ImageSearchPanel({
   isEditing: boolean;
   onSelectGame?: () => void;
 }) {
-  const { addFiles, editingCard, cards, swapGameAtIndex } =
+  const { addFiles, editingCard, cards, swapGameAtIndex, setMatchAtIndex } =
     useFileDropperContext();
-  const { igdb, setIgdb } = useSingleCardSearchContext();
+  const { igdb, setIgdb, setSteam } = useSingleCardSearchContext();
   const { searchQuery, gameEntries, page, hasMore, isRomHacks } = igdb;
   const updateIgdb = useCallback(
     (patch: Partial<IgdbSearchCache>) =>
@@ -99,6 +103,7 @@ export default function ImageSearchPanel({
         editingCard: isEditing ? editingCard : null,
         editingCanvas: editingCanvasRef?.current ?? null,
         game,
+        source: 'igdb',
         onSelectGame,
         previewSrc: target.src,
         scheduleAddFiles: startTransition,
@@ -107,6 +112,27 @@ export default function ImageSearchPanel({
       }).finally(() => {
         setLoadingGameId(null);
       });
+
+      // Cross-fill Steam only if the card doesn't already have a Steam match.
+      const targetCard = isEditing
+        ? editingCard
+        : cards.current.find((c) => c.isSelected) ?? null;
+      const hasExistingSteamMatch = !!targetCard?.matches?.steam;
+      if (!hasExistingSteamMatch) {
+        void crossFillSteamFromIgdb(game, setSteam)
+          .then((topSteamGame) => {
+            if (!topSteamGame || !targetCard) return;
+            const idx = cards.current.indexOf(targetCard);
+            if (idx === -1) return;
+            // provisional Steam match: game identity only, no cover yet
+            setMatchAtIndex(
+              'steam',
+              buildSteamSearchResult(topSteamGame, targetCard.game?.cover),
+              idx,
+            );
+          })
+          .catch((err) => console.error(err));
+      }
     },
     [
       addFiles,
@@ -114,6 +140,8 @@ export default function ImageSearchPanel({
       editingCard,
       cards,
       swapGameAtIndex,
+      setMatchAtIndex,
+      setSteam,
       onSelectGame,
       editingCanvasRef,
     ],
@@ -236,6 +264,7 @@ export default function ImageSearchPanel({
                   ?.map((p) => p.abbreviation)
                   .join(', ')}`}
                 gameEntry={gameEntry}
+                source="igdb"
                 imgSource={gameEntry.cover}
                 addImage={addImage}
                 loading={loadingGameId === gameEntry.id}

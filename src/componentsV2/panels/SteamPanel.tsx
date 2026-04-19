@@ -33,6 +33,10 @@ import {
   fetchSteamLogosByGameId,
   type SteamAutocompleteGame,
 } from '../../utils/search';
+import {
+  buildSteamSearchResult,
+  crossFillIgdbFromSteam,
+} from '../../utils/crossSearch';
 import { SearchResultCard } from './SearchResultCard';
 import { applySearchResultToCards } from './searchResultActions';
 import './SteamPanel.css';
@@ -52,9 +56,9 @@ export default function SteamPanel({
   isEditing?: boolean;
   onSelectGame?: () => void;
 }) {
-  const { addFiles, editingCard, cards, swapGameAtIndex } =
+  const { addFiles, editingCard, cards, swapGameAtIndex, setMatchAtIndex } =
     useFileDropperContext();
-  const { steam, setSteam } = useSingleCardSearchContext();
+  const { steam, setSteam, setIgdb } = useSingleCardSearchContext();
   const {
     searchQuery,
     selectedGame,
@@ -280,16 +284,24 @@ export default function SteamPanel({
   const addImage = (
     e: MouseEvent<HTMLImageElement>,
     url: string,
-    game: SearchResult,
+    gridEntry: SearchResult,
   ) => {
     const target = e.target as HTMLImageElement;
-    setLoadingGameId(game.id);
+    setLoadingGameId(gridEntry.id);
+
+    // The Steam grid is only an image — the actual match is the SGDB game
+    // the user picked from autocomplete. Build a SearchResult around that.
+    const steamMatch = selectedGame
+      ? buildSteamSearchResult(selectedGame, gridEntry.cover)
+      : gridEntry;
+
     void applySearchResultToCards({
       addFiles,
       cards: cards.current,
       editingCard: isEditing ? editingCard : null,
       editingCanvas: editingCanvasRef?.current ?? null,
-      game,
+      game: steamMatch,
+      source: 'steam',
       onSelectGame,
       previewSrc: target.src,
       swapGameAtIndex,
@@ -297,6 +309,22 @@ export default function SteamPanel({
     }).finally(() => {
       setLoadingGameId(null);
     });
+
+    // Cross-fill IGDB only if the card doesn't already have an IGDB match.
+    const targetCard = isEditing
+      ? editingCard
+      : cards.current.find((c) => c.isSelected) ?? null;
+    const hasExistingIgdbMatch = !!targetCard?.matches?.igdb;
+    if (!hasExistingIgdbMatch && selectedGame) {
+      void crossFillIgdbFromSteam(selectedGame.name, setIgdb)
+        .then((topIgdbGame) => {
+          if (!topIgdbGame || !targetCard) return;
+          const idx = cards.current.indexOf(targetCard);
+          if (idx === -1) return;
+          setMatchAtIndex('igdb', topIgdbGame, idx);
+        })
+        .catch((err) => console.error(err));
+    }
   };
 
   return (
@@ -369,6 +397,7 @@ export default function SteamPanel({
               key={`steam-${tabValue}-${gameEntry.id}`}
               description={gameEntry.summary}
               gameEntry={gameEntry}
+              source="steam"
               imgSource={gameEntry.cover}
               addImage={addImage}
               loading={loadingGameId === gameEntry.id}

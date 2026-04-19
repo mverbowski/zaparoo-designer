@@ -2,6 +2,7 @@ import type { SearchResult } from '../../../netlify/apiProviders/types.mts';
 import type { StaticCanvas } from 'fabric';
 import type {
   CardData,
+  MatchSource,
   PossibleFile,
 } from '../../contexts/fileDropper';
 import { getImage } from '../../utils/search';
@@ -59,6 +60,7 @@ type ApplySearchResultArgs = {
   editingCard: CardData | null;
   editingCanvas?: StaticCanvas | null;
   game: SearchResult;
+  source: MatchSource;
   onSelectGame?: () => void;
   previewSrc: string;
   scheduleAddFiles?: (callback: () => void) => void;
@@ -66,6 +68,7 @@ type ApplySearchResultArgs = {
     file: PossibleFile,
     game: SearchResult,
     index: number,
+    source: MatchSource,
   ) => void;
   url: string;
 };
@@ -76,6 +79,7 @@ export const applySearchResultToCards = async ({
   editingCard,
   editingCanvas,
   game,
+  source,
   onSelectGame,
   previewSrc,
   scheduleAddFiles,
@@ -90,7 +94,7 @@ export const applySearchResultToCards = async ({
       : getActiveResultTargetIndex(cards, editingCard);
 
   if (targetIndex !== -1) {
-    swapGameAtIndex(file, game, targetIndex);
+    swapGameAtIndex(file, game, targetIndex, source);
     await applyAsMainImageIfCardIsEmpty(
       cards[targetIndex],
       file,

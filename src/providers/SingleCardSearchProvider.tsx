@@ -13,7 +13,36 @@ import {
   type IgdbSearchCache,
   type SteamSearchCache,
 } from '../contexts/singleCardSearch';
-import { useFileDropperContext } from '../contexts/fileDropper';
+import {
+  useFileDropperContext,
+  type CardData,
+} from '../contexts/fileDropper';
+import type { SearchResult } from '../../netlify/apiProviders/types.mts';
+
+const hydrateIgdbFromCard = (card: CardData): IgdbSearchCache => {
+  const igdbMatch = card.matches?.igdb as SearchResult | undefined;
+  if (!igdbMatch?.name) return INITIAL_IGDB_CACHE;
+  return {
+    ...INITIAL_IGDB_CACHE,
+    searchQuery: igdbMatch.name,
+    gameEntries: [igdbMatch],
+  };
+};
+
+const hydrateSteamFromCard = (card: CardData): SteamSearchCache => {
+  const steamMatch = card.matches?.steam as SearchResult | undefined;
+  if (!steamMatch?.name) return INITIAL_STEAM_CACHE;
+  const numericId = Number.parseInt(steamMatch.id, 10);
+  if (!Number.isFinite(numericId)) return INITIAL_STEAM_CACHE;
+  const autocompleteEntry = { id: numericId, name: steamMatch.name };
+  return {
+    ...INITIAL_STEAM_CACHE,
+    searchQuery: steamMatch.name,
+    selectedGame: autocompleteEntry,
+    options: [autocompleteEntry],
+    hasLoadedQuery: true,
+  };
+};
 
 export const SingleCardSearchProvider: FC<{ children: ReactNode }> = ({
   children,
@@ -26,14 +55,14 @@ export const SingleCardSearchProvider: FC<{ children: ReactNode }> = ({
   useEffect(() => {
     const currentKey = editingCard?.key ?? null;
     // Preserve cache while modal is closed so reopening the same card keeps state.
-    if (currentKey === null) return;
-    if (
-      lastCardKeyRef.current !== null &&
-      lastCardKeyRef.current !== currentKey
-    ) {
-      setIgdb(INITIAL_IGDB_CACHE);
-      setSteam(INITIAL_STEAM_CACHE);
-    }
+    if (currentKey === null || !editingCard) return;
+    // Same card reopened — keep whatever the user had in flight.
+    if (lastCardKeyRef.current === currentKey) return;
+
+    // New card (or first card after reload) — seed caches from stored matches
+    // so the search panels reflect what's already on the card.
+    setIgdb(hydrateIgdbFromCard(editingCard));
+    setSteam(hydrateSteamFromCard(editingCard));
     lastCardKeyRef.current = currentKey;
   }, [editingCard]);
 

@@ -3,15 +3,87 @@ import './SingleCardEditModal.css';
 import { MutableRefObject, useCallback, useRef, useState } from 'react';
 import { useRealTimeResize } from '../hooks/useRealtimeResize';
 import { useEditableCanvas } from '../hooks/useEditableCanvas';
-import { useFileDropperContext } from '../contexts/fileDropper';
+import {
+  useFileDropperContext,
+  type MatchSource,
+} from '../contexts/fileDropper';
 import { noop } from '../utils/utils';
 import { type FabricObject, type Canvas } from 'fabric';
+import type { SearchResult } from '../../netlify/apiProviders/types.mts';
+import { IgdbSourceIcon, SteamGridDbSourceIcon } from './SourceIcons';
 
 type SingleCardEditSpaceProps = {
   onClose: () => void;
-  onShowGamePanel?: () => void;
+  onShowSourcePanel?: (source: MatchSource) => void;
   setCurrentEditingCanvas: (canvas: MutableRefObject<Canvas>) => void;
   setCurrentSelectedLayer: React.Dispatch<FabricObject | undefined>;
+};
+
+const SOURCE_LABEL: Record<MatchSource, string> = {
+  igdb: 'IGDB',
+  steam: 'SteamGridDB',
+};
+
+const SOURCE_ICON: Record<MatchSource, JSX.Element> = {
+  igdb: <IgdbSourceIcon />,
+  steam: <SteamGridDbSourceIcon />,
+};
+
+const platformLabelOf = (game: Partial<SearchResult> | undefined) =>
+  game?.platforms?.length
+    ? game.platforms.map((p) => p.abbreviation).join(', ')
+    : null;
+
+type MatchSlotProps = {
+  source: MatchSource;
+  game: Partial<SearchResult> | undefined;
+  onClick?: () => void;
+  isPrimary: boolean;
+};
+
+const MatchSlot = ({ source, game, onClick, isPrimary }: MatchSlotProps) => {
+  const hasGame = !!game?.name;
+  const platformLabel = platformLabelOf(game);
+  return (
+    <div
+      className={`matchSlot ${hasGame ? 'matchSlot-filled' : 'matchSlot-empty'} ${
+        isPrimary ? 'matchSlot-primary' : ''
+      }`}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : -1}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+    >
+      <div className="matchSlotHeader">
+        <span className="matchSlotIcon">{SOURCE_ICON[source]}</span>
+        <Typography variant="caption" className="currentGameLabel">
+          {SOURCE_LABEL[source]}
+          {isPrimary ? ' · image source' : ''}
+        </Typography>
+      </div>
+      {hasGame ? (
+        <Typography className="currentGameName">
+          {game!.name}
+          {platformLabel ? (
+            <span className="currentGamePlatform"> · {platformLabel}</span>
+          ) : null}
+        </Typography>
+      ) : (
+        <Typography className="currentGameEmpty">
+          No match — search {SOURCE_LABEL[source]}
+        </Typography>
+      )}
+    </div>
+  );
 };
 
 type SingleCardEditModalProps = SingleCardEditSpaceProps & {
@@ -20,7 +92,7 @@ type SingleCardEditModalProps = SingleCardEditSpaceProps & {
 
 export const ModalInternalComponent = ({
   onClose,
-  onShowGamePanel,
+  onShowSourcePanel,
   setCurrentEditingCanvas,
   setCurrentSelectedLayer,
 }: SingleCardEditSpaceProps) => {
@@ -50,49 +122,31 @@ export const ModalInternalComponent = ({
     onClose();
   }, [confirmAndSave, onClose]);
 
-  const game = editingCard?.game;
-  const gameName = game?.name;
-  const platformLabel = game?.platforms?.length
-    ? game.platforms.map((p) => p.abbreviation).join(', ')
-    : null;
-  const hasGame = !!gameName;
+  const matches = editingCard?.matches ?? {};
+  const primarySource = editingCard?.primarySource;
 
   return (
     <>
       <div className="verticalStack editSpace" ref={padderRef}>
         <canvas key="doNotChangePlease" ref={canvasElement} />
       </div>
-      <div
-        className={`currentGameBar ${hasGame ? 'currentGameBar-clickable' : ''}`}
-        role={hasGame ? 'button' : undefined}
-        tabIndex={hasGame ? 0 : -1}
-        onClick={hasGame ? onShowGamePanel : undefined}
-        onKeyDown={
-          hasGame
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onShowGamePanel?.();
-                }
-              }
-            : undefined
-        }
-      >
-        <Typography variant="caption" className="currentGameLabel">
-          Current game
-        </Typography>
-        {hasGame ? (
-          <Typography className="currentGameName">
-            {gameName}
-            {platformLabel ? (
-              <span className="currentGamePlatform"> · {platformLabel}</span>
-            ) : null}
-          </Typography>
-        ) : (
-          <Typography className="currentGameEmpty">
-            None selected — search IGDB or Steam to pick one
-          </Typography>
-        )}
+      <div className="currentGameBar">
+        <MatchSlot
+          source="igdb"
+          game={matches.igdb}
+          onClick={
+            onShowSourcePanel ? () => onShowSourcePanel('igdb') : undefined
+          }
+          isPrimary={primarySource === 'igdb'}
+        />
+        <MatchSlot
+          source="steam"
+          game={matches.steam}
+          onClick={
+            onShowSourcePanel ? () => onShowSourcePanel('steam') : undefined
+          }
+          isPrimary={primarySource === 'steam'}
+        />
       </div>
       <div className="horizontalStack confirmButtons">
         <Button
@@ -121,7 +175,7 @@ export const ModalInternalComponent = ({
 export const SingleCardEditModal = ({
   isOpen,
   onClose,
-  onShowGamePanel,
+  onShowSourcePanel,
   setCurrentEditingCanvas,
   setCurrentSelectedLayer,
 }: SingleCardEditModalProps) => {
@@ -149,7 +203,7 @@ export const SingleCardEditModal = ({
             setCurrentSelectedLayer={setCurrentSelectedLayer}
             setCurrentEditingCanvas={setCurrentEditingCanvas}
             onClose={onClose}
-            onShowGamePanel={onShowGamePanel}
+            onShowSourcePanel={onShowSourcePanel}
           />
         )}
       </div>
