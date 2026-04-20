@@ -5,10 +5,11 @@ import CircleOutlinedIcon from '@mui/icons-material/CircleOutlined';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
+import GridOnIcon from '@mui/icons-material/GridOn';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
-import { type MutableRefObject } from 'react';
+import { type MutableRefObject, useRef, useState } from 'react';
 import { type Canvas, Ellipse, Rect, Textbox, type FabricObject } from 'fabric';
 import { createFabricObjectId } from '../utils/createFabricObjectId';
 import { getMainImage } from '../utils/templateHandling';
@@ -18,6 +19,8 @@ import {
   getUserTextboxOptions,
 } from './panels/userTextLayer';
 import type { CanvasHistory } from '../hooks/useCanvasHistory';
+import type { GridSettings } from '../contexts/fileDropper';
+import { GridSettingsPopover } from './GridSettingsPopover';
 import './EditToolbar.css';
 
 type Props = {
@@ -25,6 +28,9 @@ type Props = {
   history: CanvasHistory;
   centeredScalingMode: boolean;
   onToggleCenteredScaling: () => void;
+  gridSettings: GridSettings;
+  onGridSettingsChange: (next: GridSettings) => void;
+  gridTemplateDefault?: Partial<GridSettings>;
 };
 
 const DEFAULT_SHAPE_FILL = '#e0e0e0';
@@ -36,7 +42,20 @@ export const EditToolbar = ({
   history,
   centeredScalingMode,
   onToggleCenteredScaling,
+  gridSettings,
+  onGridSettingsChange,
+  gridTemplateDefault,
 }: Props) => {
+  const gridButtonRef = useRef<HTMLButtonElement>(null);
+  const [gridPopoverOpen, setGridPopoverOpen] = useState(false);
+
+  const toggleGrid = () => {
+    onGridSettingsChange({ ...gridSettings, enabled: !gridSettings.enabled });
+  };
+
+  const openGridPopover = () => setGridPopoverOpen(true);
+  const closeGridPopover = () => setGridPopoverOpen(false);
+
   const withCanvas = (fn: (canvas: Canvas) => void) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -182,7 +201,46 @@ export const EditToolbar = ({
           </IconButton>
         </Tooltip>
       </div>
-      <div className="editToolbarZone editToolbarZoneMiddle" />
+      <div className="editToolbarZone editToolbarZoneMiddle">
+        <Tooltip title="Toggle grid (click caret for settings)">
+          <IconButton
+            ref={gridButtonRef}
+            size="small"
+            onClick={toggleGrid}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              openGridPopover();
+            }}
+            aria-label="Toggle grid"
+            className={
+              gridSettings.enabled
+                ? 'editToolbarToggle editToolbarToggleActive'
+                : 'editToolbarToggle'
+            }
+          >
+            <GridOnIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Grid settings">
+          <IconButton
+            size="small"
+            onClick={openGridPopover}
+            aria-label="Grid settings"
+          >
+            <span className="editToolbarCaret" aria-hidden>
+              ▾
+            </span>
+          </IconButton>
+        </Tooltip>
+        <GridSettingsPopover
+          open={gridPopoverOpen}
+          onClose={closeGridPopover}
+          anchorEl={gridButtonRef.current}
+          settings={gridSettings}
+          onChange={onGridSettingsChange}
+          templateDefault={gridTemplateDefault}
+        />
+      </div>
       <div className="editToolbarZone editToolbarZoneRight">
         <Tooltip title="Undo (Ctrl+Z)">
           <span>

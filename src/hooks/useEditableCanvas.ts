@@ -1,4 +1,8 @@
-import { type CardData, useFileDropperContext } from '../contexts/fileDropper';
+import {
+  type CardData,
+  type GridSettings,
+  useFileDropperContext,
+} from '../contexts/fileDropper';
 import {
   MutableRefObject,
   useCallback,
@@ -13,6 +17,13 @@ import { type TemplateEdit } from '../resourcesTypedef';
 import { createFabricObjectId } from '../utils/createFabricObjectId';
 import { FABRIC_CUSTOM_PROPS } from '../utils/sessionFile';
 import { useCanvasHistory, type CanvasHistory } from './useCanvasHistory';
+import {
+  buildSnapLines,
+  drawGrid,
+  drawGuides,
+  findBestAxisSnap,
+  type AxisSnap,
+} from '../utils/canvasGrid';
 
 type useEditableCanvasArgs = {
   setReady: React.Dispatch<boolean>;
@@ -22,6 +33,7 @@ type useEditableCanvasArgs = {
   setCurrentEditingCanvas?: React.Dispatch<MutableRefObject<Canvas>>;
   setCurrentSelectedLayer: React.Dispatch<FabricObject | undefined >;
   centeredScalingMode?: boolean;
+  gridSettings?: GridSettings;
 };
 
 type useEditableCanvasReturnType = {
@@ -51,6 +63,7 @@ export const useEditableCanvas = ({
   setCurrentEditingCanvas,
   setCurrentSelectedLayer,
   centeredScalingMode = false,
+  gridSettings,
 }: useEditableCanvasArgs): useEditableCanvasReturnType => {
   const { cards, editingCard } = useFileDropperContext();
   const editableCanvas = useRef<Canvas | null>(null);
@@ -61,10 +74,29 @@ export const useEditableCanvas = ({
   const clipboardRef = useRef<FabricObject | null>(null);
   const altHeldRef = useRef<boolean>(false);
   const centeredScalingModeRef = useRef<boolean>(centeredScalingMode);
+  const gridSettingsRef = useRef<GridSettings | undefined>(gridSettings);
+  const dragStateRef = useRef<{
+    target: FabricObject;
+    startLeft: number;
+    startTop: number;
+    startPointer: { x: number; y: number };
+    bboxOffsetX: number;
+    bboxOffsetY: number;
+    bboxWidth: number;
+    bboxHeight: number;
+    snappedX: AxisSnap | null;
+    snappedY: AxisSnap | null;
+  } | null>(null);
 
   useEffect(() => {
     centeredScalingModeRef.current = centeredScalingMode;
   }, [centeredScalingMode]);
+
+  useEffect(() => {
+    gridSettingsRef.current = gridSettings;
+    const canvas = canvasInstance;
+    if (canvas) canvas.requestRenderAll();
+  }, [gridSettings, canvasInstance]);
 
   const selectedCard = editingCard;
 
@@ -159,9 +191,134 @@ export const useEditableCanvas = ({
               setIsObjectAdjust(true);
             }
           });
-          canvas.on('object:moving', ({ target }) => {
+          canvas.on('mouse:down', (opt) => {
+            const target = opt.target;
+            if (!target || target === mainImage) {
+              dragStateRef.current = null;
+              return;
+            }
+            const bbox = target.getBoundingRect();
+            dragStateRef.current = {
+              target,
+              startLeft: target.left ?? 0,
+              startTop: target.top ?? 0,
+              startPointer: canvas.getScenePoint(opt.e),
+              bboxOffsetX: bbox.left - (target.left ?? 0),
+              bboxOffsetY: bbox.top - (target.top ?? 0),
+              bboxWidth: bbox.width,
+              bboxHeight: bbox.height,
+              snappedX: null,
+              snappedY: null,
+            };
+          });
+          canvas.on('mouse:up', () => {
+            dragStateRef.current = null;
+          });
+          canvas.on('object:moving', (opt) => {
+            const target = opt.target;
+            if (!target) return;
             if (target === mainImage) {
               fixImageInsideCanvas(mainImage);
+              return;
+            }
+            const state = dragStateRef.current;
+            if (!state || state.target !== target) return;
+
+            const pointer = canvas.getScenePoint(opt.e);
+            const freeLeft = state.startLeft + (pointer.x - state.startPointer.x);
+            const freeTop = state.startTop + (pointer.y - state.startPointer.y);
+
+            const settings = gridSettingsRef.current;
+            const snapOn = !!(settings && settings.snapEnabled);
+            const lines = snapOn
+              ? buildSnapLines(canvas, settings!)
+              : { vertical: [], horizontal: [] };
+            const tolerance = snapOn ? settings!.snapTolerance : 0;
+            // Hysteresis: once latched, only release when the free position
+            // drifts more than `breakDistance` past the snap line.
+            const breakDistance = tolerance * 2;
+
+            const freeBboxLeft = freeLeft + state.bboxOffsetX;
+            const freeBboxTop = freeTop + state.bboxOffsetY;
+            const candidatesX = [
+              { offset: state.bboxOffsetX, value: freeBboxLeft },
+              {
+                offset: state.bboxOffsetX + state.bboxWidth / 2,
+                value: freeBboxLeft + state.bboxWidth / 2,
+              },
+              {
+                offset: state.bboxOffsetX + state.bboxWidth,
+                value: freeBboxLeft + state.bboxWidth,
+              },
+            ];
+            const candidatesY = [
+              { offset: state.bboxOffsetY, value: freeBboxTop },
+              {
+                offset: state.bboxOffsetY + state.bboxHeight / 2,
+                value: freeBboxTop + state.bboxHeight / 2,
+              },
+              {
+                offset: state.bboxOffsetY + state.bboxHeight,
+                value: freeBboxTop + state.bboxHeight,
+              },
+            ];
+
+            let newLeft = freeLeft;
+            if (snapOn && state.snappedX) {
+              const currentPoint = freeLeft + state.snappedX.candidateOffset;
+              if (Math.abs(currentPoint - state.snappedX.line) > breakDistance) {
+                state.snappedX = null;
+              } else {
+                newLeft = state.snappedX.line - state.snappedX.candidateOffset;
+              }
+            }
+            if (snapOn && !state.snappedX) {
+              const best = findBestAxisSnap(
+                candidatesX,
+                lines.vertical,
+                tolerance,
+              );
+              if (best) {
+                state.snappedX = best;
+                newLeft = best.line - best.candidateOffset;
+              }
+            }
+
+            let newTop = freeTop;
+            if (snapOn && state.snappedY) {
+              const currentPoint = freeTop + state.snappedY.candidateOffset;
+              if (Math.abs(currentPoint - state.snappedY.line) > breakDistance) {
+                state.snappedY = null;
+              } else {
+                newTop = state.snappedY.line - state.snappedY.candidateOffset;
+              }
+            }
+            if (snapOn && !state.snappedY) {
+              const best = findBestAxisSnap(
+                candidatesY,
+                lines.horizontal,
+                tolerance,
+              );
+              if (best) {
+                state.snappedY = best;
+                newTop = best.line - best.candidateOffset;
+              }
+            }
+
+            target.left = newLeft;
+            target.top = newTop;
+            target.setCoords();
+          });
+          canvas.on('after:render', () => {
+            const settings = gridSettingsRef.current;
+            if (!settings) return;
+            const ctx = canvas.getContext();
+            if (!ctx) return;
+            if (settings.enabled) {
+              drawGrid(ctx, canvas, settings);
+            }
+            if (settings.showGuides && settings.guides.length) {
+              drawGuides(ctx, canvas, settings, settings.guides);
             }
           });
           setCanvasInstance(canvas);

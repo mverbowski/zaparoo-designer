@@ -1,5 +1,10 @@
 import { FabricImage, type FabricObject, type StaticCanvas } from 'fabric';
-import type { CardData, CardMatches, MatchSource } from '../contexts/fileDropper';
+import type {
+  CardData,
+  CardMatches,
+  GridSettings,
+  MatchSource,
+} from '../contexts/fileDropper';
 import type { SearchResult } from '../../netlify/apiProviders/types.mts';
 import { templates } from '../cardsTemplates';
 
@@ -101,6 +106,7 @@ type SerializedCard = {
   canvasWidth: number | null;
   canvasHeight: number | null;
   canvasViewportTransform: number[] | null;
+  gridSettings?: GridSettings;
 };
 
 type SessionFile = {
@@ -137,6 +143,7 @@ export const serializeSession = (cards: CardData[]): string => {
         canvasViewportTransform: card.canvas
           ? [...card.canvas.viewportTransform]
           : null,
+        gridSettings: card.gridSettings,
       };
     }),
   };
@@ -169,6 +176,7 @@ export const deserializeSession = (json: string): CardData[] => {
       colors: saved.colors,
       originalColors: saved.originalColors,
       key: saved.key,
+      gridSettings: saved.gridSettings,
     };
   });
 };

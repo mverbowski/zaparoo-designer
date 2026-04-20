@@ -1,10 +1,12 @@
 import { Modal, Button, Typography } from '@mui/material';
 import './SingleCardEditModal.css';
-import { MutableRefObject, useCallback, useRef, useState } from 'react';
+import { MutableRefObject, useCallback, useMemo, useRef, useState } from 'react';
 import { useRealTimeResize } from '../hooks/useRealtimeResize';
 import { useEditableCanvas } from '../hooks/useEditableCanvas';
 import {
+  DEFAULT_GRID_SETTINGS,
   useFileDropperContext,
+  type GridSettings,
   type MatchSource,
 } from '../contexts/fileDropper';
 import { noop } from '../utils/utils';
@@ -101,6 +103,25 @@ export const ModalInternalComponent = ({
   const [centeredScalingMode, setCenteredScalingMode] = useState(false);
   const padderRef = useRef<HTMLDivElement>(null);
   const { editingCard } = useFileDropperContext();
+  const templateDefaultGrid = editingCard?.template?.defaultGrid;
+  const [gridSettings, setGridSettingsState] = useState<GridSettings>(() => ({
+    ...DEFAULT_GRID_SETTINGS,
+    ...(templateDefaultGrid ?? {}),
+    ...(editingCard?.gridSettings ?? {}),
+  }));
+  const updateGridSettings = useCallback(
+    (next: GridSettings) => {
+      setGridSettingsState(next);
+      if (editingCard) {
+        editingCard.gridSettings = next;
+      }
+    },
+    [editingCard],
+  );
+  const gridTemplateDefault = useMemo(
+    () => templateDefaultGrid,
+    [templateDefaultGrid],
+  );
 
   const {
     selectedCard,
@@ -114,6 +135,7 @@ export const ModalInternalComponent = ({
     setCurrentEditingCanvas,
     setCurrentSelectedLayer,
     centeredScalingMode,
+    gridSettings,
   });
 
   useRealTimeResize({
@@ -140,6 +162,9 @@ export const ModalInternalComponent = ({
         history={history}
         centeredScalingMode={centeredScalingMode}
         onToggleCenteredScaling={() => setCenteredScalingMode((v) => !v)}
+        gridSettings={gridSettings}
+        onGridSettingsChange={updateGridSettings}
+        gridTemplateDefault={gridTemplateDefault}
       />
       <div className="verticalStack editSpace" ref={padderRef}>
         <canvas key="doNotChangePlease" ref={canvasElement} />

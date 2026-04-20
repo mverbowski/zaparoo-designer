@@ -10,6 +10,50 @@ export type PossibleFile = File | HTMLImageElement | null;
 export type MatchSource = 'igdb' | 'steam';
 export type CardMatches = Partial<Record<MatchSource, SearchResult>>;
 
+export type GuideOrientation = 'horizontal' | 'vertical';
+
+export type Guide = {
+  id: string;
+  orientation: GuideOrientation;
+  /* position in canvas base coords (pre-zoom) */
+  position: number;
+};
+
+export type GridSettings = {
+  enabled: boolean;
+  /* spacing between minor lines in canvas base coords */
+  spacing: number;
+  /* number of minor subdivisions between major lines */
+  subdivisions: number;
+  showGuides: boolean;
+  guides: Guide[];
+  snapEnabled: boolean;
+  /* snap tolerance in canvas base coords — zone in which a drag will latch */
+  snapTolerance: number;
+  /* line color applied to minor + major grid lines, hex (#rrggbb) */
+  gridColor: string;
+  /* 0..1 opacity applied to minor lines; major lines scale up */
+  gridOpacity: number;
+  /* line color for user guide lines, hex */
+  guideColor: string;
+  /* 0..1 opacity for guide lines */
+  guideOpacity: number;
+};
+
+export const DEFAULT_GRID_SETTINGS: GridSettings = {
+  enabled: false,
+  spacing: 32,
+  subdivisions: 4,
+  showGuides: true,
+  guides: [],
+  snapEnabled: true,
+  snapTolerance: 8,
+  gridColor: '#ffffff',
+  gridOpacity: 0.35,
+  guideColor: '#53d6ff',
+  guideOpacity: 0.9,
+};
+
 export type CardData = {
   /* the source of the main image */
   file: PossibleFile;
@@ -30,6 +74,7 @@ export type CardData = {
   colors: string[];
   originalColors: string[];
   key: string;
+  gridSettings?: GridSettings;
 };
 
 export type contextType = {
