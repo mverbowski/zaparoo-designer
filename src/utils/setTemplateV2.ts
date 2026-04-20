@@ -240,6 +240,7 @@ export const setTemplateV2OnCanvases = async (
     // add the template to the canvas
     const objectsToAdd = fabricLayer.removeAll();
     objectsToAdd.forEach((obj) => {
+      obj['zaparoo-template-layer'] = true;
       obj['zaparoo-locked'] = true;
       obj.selectable = false;
       obj.evented = false;

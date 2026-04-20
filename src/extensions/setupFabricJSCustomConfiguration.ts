@@ -13,6 +13,7 @@ declare module 'fabric' {
     'zaparoo-align-strategy'?: 'left-top' | 'center-top';
     'zaparoo-user-layer'?: boolean;
     'zaparoo-locked'?: boolean;
+    'zaparoo-template-layer'?: boolean;
   }
 
   interface FabricImage {
@@ -57,6 +58,7 @@ export const setupFabricJSCustomConfiguration = () => {
     'original_fill',
     'zaparoo-user-layer',
     'zaparoo-locked',
+    'zaparoo-template-layer',
   ];
 
   FabricImage.customProperties = [

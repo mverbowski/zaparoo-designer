@@ -11,6 +11,8 @@ import {
 import { RequireCards } from './RequireEditing';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import VerticalAlignTopIcon from '@mui/icons-material/VerticalAlignTop';
+import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -35,6 +37,7 @@ type LayerRow = {
   stroke?: string;
   visible: boolean;
   locked: boolean;
+  isTemplate: boolean;
 };
 
 const isPlaceholder = (object: FabricObject) =>
@@ -42,6 +45,9 @@ const isPlaceholder = (object: FabricObject) =>
 
 const isLocked = (object: FabricObject) =>
   object['zaparoo-locked'] === true || object.selectable === false;
+
+const isTemplateLayer = (object: FabricObject) =>
+  object['zaparoo-template-layer'] === true;
 
 // Fabric's getObjects returns bottom-to-top. We display top-to-bottom
 // (Photoshop order), so the first row in the list is the object rendered on
@@ -61,6 +67,7 @@ const getLayersTopDown = (canvas: StaticCanvas): LayerRow[] =>
       stroke: (object.stroke as string | undefined) ?? undefined,
       visible: object.visible !== false,
       locked: isLocked(object),
+      isTemplate: isTemplateLayer(object),
     }));
 
 export const LayersPanel = ({
@@ -196,6 +203,32 @@ export const LayersPanel = ({
     [canvasRef, findLayer, refreshLayers],
   );
 
+  const moveLayerToFront = useCallback(
+    (id: string) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const layer = findLayer(id);
+      if (!layer) return;
+      canvas.bringObjectToFront(layer);
+      canvas.requestRenderAll();
+      refreshLayers();
+    },
+    [canvasRef, findLayer, refreshLayers],
+  );
+
+  const moveLayerToBack = useCallback(
+    (id: string) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const layer = findLayer(id);
+      if (!layer) return;
+      canvas.sendObjectToBack(layer);
+      canvas.requestRenderAll();
+      refreshLayers();
+    },
+    [canvasRef, findLayer, refreshLayers],
+  );
+
   const onColorSelect = useCallback(
     (id: string, nextColor: string, property: 'fill' | 'stroke') => {
       const canvas = canvasRef.current;
@@ -225,7 +258,7 @@ export const LayersPanel = ({
             <div
               className={`layers-row ${isSelected ? 'selected' : ''} ${
                 layer.locked ? 'locked' : ''
-              }`}
+              } ${layer.isTemplate ? 'template' : ''}`}
               onClick={() => selectOnCanvas(layer.id)}
               key={layer.id}
             >
@@ -356,6 +389,40 @@ export const LayersPanel = ({
                     }}
                   >
                     <ArrowDownwardIcon fontSize="inherit" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip
+                  title="Bring to front"
+                  enterDelay={TOOLTIP_ENTER_DELAY}
+                  enterNextDelay={TOOLTIP_ENTER_NEXT_DELAY}
+                >
+                  <IconButton
+                    size="small"
+                    aria-label="Bring layer to front"
+                    className="layers-row-icon"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      moveLayerToFront(layer.id);
+                    }}
+                  >
+                    <VerticalAlignTopIcon fontSize="inherit" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip
+                  title="Send to back"
+                  enterDelay={TOOLTIP_ENTER_DELAY}
+                  enterNextDelay={TOOLTIP_ENTER_NEXT_DELAY}
+                >
+                  <IconButton
+                    size="small"
+                    aria-label="Send layer to back"
+                    className="layers-row-icon"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      moveLayerToBack(layer.id);
+                    }}
+                  >
+                    <VerticalAlignBottomIcon fontSize="inherit" />
                   </IconButton>
                 </Tooltip>
                 <Tooltip
