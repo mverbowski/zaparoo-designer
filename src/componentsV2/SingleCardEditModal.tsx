@@ -11,6 +11,7 @@ import { noop } from '../utils/utils';
 import { type FabricObject, type Canvas } from 'fabric';
 import type { SearchResult } from '../../netlify/apiProviders/types.mts';
 import { IgdbSourceIcon, SteamGridDbSourceIcon } from './SourceIcons';
+import { EditToolbar } from './EditToolbar';
 
 type SingleCardEditSpaceProps = {
   onClose: () => void;
@@ -97,16 +98,23 @@ export const ModalInternalComponent = ({
   setCurrentSelectedLayer,
 }: SingleCardEditSpaceProps) => {
   const [ready, setReady] = useState(false);
+  const [centeredScalingMode, setCenteredScalingMode] = useState(false);
   const padderRef = useRef<HTMLDivElement>(null);
   const { editingCard } = useFileDropperContext();
 
-  const { selectedCard, editableCanvas, confirmAndSave, canvasElement } =
-    useEditableCanvas({
-      setReady,
-      setCurrentResource: noop,
-      setCurrentEditingCanvas,
-      setCurrentSelectedLayer,
-    });
+  const {
+    selectedCard,
+    editableCanvas,
+    confirmAndSave,
+    canvasElement,
+    history,
+  } = useEditableCanvas({
+    setReady,
+    setCurrentResource: noop,
+    setCurrentEditingCanvas,
+    setCurrentSelectedLayer,
+    centeredScalingMode,
+  });
 
   useRealTimeResize({
     fabricCanvas: editableCanvas.current,
@@ -127,6 +135,12 @@ export const ModalInternalComponent = ({
 
   return (
     <>
+      <EditToolbar
+        canvasRef={editableCanvas}
+        history={history}
+        centeredScalingMode={centeredScalingMode}
+        onToggleCenteredScaling={() => setCenteredScalingMode((v) => !v)}
+      />
       <div className="verticalStack editSpace" ref={padderRef}>
         <canvas key="doNotChangePlease" ref={canvasElement} />
       </div>

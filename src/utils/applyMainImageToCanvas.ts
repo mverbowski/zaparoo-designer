@@ -22,6 +22,10 @@ export const replaceMainImageOnCanvas = async (
   }
 
   const placeholderIndex = canvas.getObjects().indexOf(placeholder);
+  // setMainImageOnCanvas already added mainImage to the end of _objects;
+  // remove that reference before re-inserting at the placeholder index so
+  // the same object isn't held twice.
+  canvas.remove(mainImage);
   canvas.insertAt(placeholderIndex, mainImage);
   await scaleImageToOverlayArea(placeholder, mainImage);
   canvas.requestRenderAll();

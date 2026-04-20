@@ -17,6 +17,7 @@ export const FABRIC_CUSTOM_PROPS = [
   'zaparoo-user-layer',
   'zaparoo-placeholder',
   'zaparoo-fill-strategy',
+  'zaparoo-locked',
 ];
 
 const SESSION_VERSION = 1;
