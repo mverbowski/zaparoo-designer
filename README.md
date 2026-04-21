@@ -3,7 +3,17 @@
 This fork adds additional features to the Zaparoo Designer project (https://github.com/ZaparooProject/zaparoo-designer).
 
 ## Changes
-1. Load/Save functionality
+1. Load/Save functionality for cards (local as JSON)
+2. Multiple title matches assigned per card
+3. Adjustable layers (including template layers)
+4. Grid snapping
+5. Rotation snapping
+6. Expanded font options
+7. Custom font upload support
+8. Toolbar for edit options
+9. Scale by center support
+10. Hotkeys
+11. History stack
 
 # Zaparoo Designer
 
