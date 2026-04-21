@@ -15,6 +15,9 @@ This fork adds additional features to the Zaparoo Designer project (https://gith
 10. Hotkeys
 11. History stack
 
+<img width="1763" height="1259" alt="image" src="https://github.com/user-attachments/assets/40703156-fdd7-4071-aa1c-01db47777fa9" />
+
+
 # Zaparoo Designer
 
 A companion app to the Zaparoo project. The Designer allows you to easily generate Zaparoo labels from templates, ready to print and cut, right from your web browser using external sources for game media. Read more about the Zaparoo project at [Zaparoo.org](https://zaparoo.org/).
