@@ -101,6 +101,9 @@ export const ModalInternalComponent = ({
 }: SingleCardEditSpaceProps) => {
   const [ready, setReady] = useState(false);
   const [centeredScalingMode, setCenteredScalingMode] = useState(false);
+  const [activeLayer, setActiveLayer] = useState<FabricObject | undefined>(
+    undefined,
+  );
   const padderRef = useRef<HTMLDivElement>(null);
   const { editingCard } = useFileDropperContext();
   const templateDefaultGrid = editingCard?.template?.defaultGrid;
@@ -123,6 +126,14 @@ export const ModalInternalComponent = ({
     [templateDefaultGrid],
   );
 
+  const handleSelectedLayerChange = useCallback(
+    (layer: FabricObject | undefined) => {
+      setActiveLayer(layer);
+      setCurrentSelectedLayer(layer);
+    },
+    [setCurrentSelectedLayer],
+  );
+
   const {
     selectedCard,
     editableCanvas,
@@ -133,7 +144,7 @@ export const ModalInternalComponent = ({
     setReady,
     setCurrentResource: noop,
     setCurrentEditingCanvas,
-    setCurrentSelectedLayer,
+    setCurrentSelectedLayer: handleSelectedLayerChange,
     centeredScalingMode,
     gridSettings,
   });
@@ -165,6 +176,7 @@ export const ModalInternalComponent = ({
         gridSettings={gridSettings}
         onGridSettingsChange={updateGridSettings}
         gridTemplateDefault={gridTemplateDefault}
+        activeLayer={activeLayer}
       />
       <div className="verticalStack editSpace" ref={padderRef}>
         <canvas key="doNotChangePlease" ref={canvasElement} />

@@ -21,6 +21,7 @@ import {
 import type { CanvasHistory } from '../hooks/useCanvasHistory';
 import type { GridSettings } from '../contexts/fileDropper';
 import { GridSettingsPopover } from './GridSettingsPopover';
+import { TextFormatToolbar } from './TextFormatToolbar';
 import './EditToolbar.css';
 
 type Props = {
@@ -31,6 +32,7 @@ type Props = {
   gridSettings: GridSettings;
   onGridSettingsChange: (next: GridSettings) => void;
   gridTemplateDefault?: Partial<GridSettings>;
+  activeLayer?: FabricObject;
 };
 
 const DEFAULT_SHAPE_FILL = '#e0e0e0';
@@ -45,6 +47,7 @@ export const EditToolbar = ({
   gridSettings,
   onGridSettingsChange,
   gridTemplateDefault,
+  activeLayer,
 }: Props) => {
   const gridButtonRef = useRef<HTMLButtonElement>(null);
   const [gridPopoverOpen, setGridPopoverOpen] = useState(false);
@@ -140,7 +143,10 @@ export const EditToolbar = ({
       canvas.requestRenderAll();
     });
 
+  const textboxLayer = activeLayer instanceof Textbox ? activeLayer : undefined;
+
   return (
+    <div className="editToolbarStack">
     <div className="editToolbar" role="toolbar" aria-label="Editor toolbar">
       <div className="editToolbarZone editToolbarZoneLeft">
         <Tooltip title="Add text (T)">
@@ -277,6 +283,14 @@ export const EditToolbar = ({
           </IconButton>
         </Tooltip>
       </div>
+    </div>
+    {textboxLayer && (
+      <TextFormatToolbar
+        key={textboxLayer.id ?? 'textbox'}
+        canvasRef={canvasRef}
+        target={textboxLayer}
+      />
+    )}
     </div>
   );
 };

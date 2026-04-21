@@ -38,6 +38,10 @@ export type GridSettings = {
   guideColor: string;
   /* 0..1 opacity for guide lines */
   guideOpacity: number;
+  /* snap rotation to a fixed angle increment while rotating an object */
+  rotationSnapEnabled: boolean;
+  /* angle step in degrees (e.g. 15, 45, 90) */
+  rotationSnapIncrement: number;
 };
 
 export const DEFAULT_GRID_SETTINGS: GridSettings = {
@@ -52,6 +56,8 @@ export const DEFAULT_GRID_SETTINGS: GridSettings = {
   gridOpacity: 0.35,
   guideColor: '#53d6ff',
   guideOpacity: 0.9,
+  rotationSnapEnabled: false,
+  rotationSnapIncrement: 15,
 };
 
 export type CardData = {

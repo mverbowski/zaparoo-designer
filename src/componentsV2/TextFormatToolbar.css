@@ -1,0 +1,73 @@
+.textFormatToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: rgba(0, 0, 0, 0.25);
+}
+
+.textFormatToolbar .MuiDivider-vertical {
+  height: 22px;
+  margin: 0 2px;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.textFormatToolbar .MuiToggleButtonGroup-root .MuiToggleButton-root {
+  color: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.18);
+  padding: 4px 6px;
+}
+
+.textFormatToolbar
+  .MuiToggleButtonGroup-root
+  .MuiToggleButton-root.Mui-selected {
+  color: #fff;
+  background-color: var(--ui-color-primary, #5361d9);
+}
+
+.textFormatToolbar .MuiSelect-select,
+.textFormatToolbar .MuiInputBase-input {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+}
+
+.textFormatToolbar .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.textFormatToolbar .MuiInputLabel-root {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
+.textFormatFont .MuiSelect-select {
+  min-width: 120px;
+}
+
+.textFormatSize {
+  width: 72px;
+}
+
+.textFormatNumber {
+  width: 88px;
+}
+
+.textFormatColor {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.textFormatColor input[type='color'] {
+  width: 32px;
+  height: 26px;
+  padding: 0;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  cursor: pointer;
+}

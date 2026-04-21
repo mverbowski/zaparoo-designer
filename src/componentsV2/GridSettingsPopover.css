@@ -135,6 +135,28 @@
   opacity: 0.75;
 }
 
+.gridSettingsRotation {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gridSettingsRotationRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.gridSettingsRotationSelect {
+  min-width: 110px;
+}
+
+.gridSettingsRotationCustom {
+  flex: 1;
+}
+
 .gridSettingsFooter {
   display: flex;
   justify-content: flex-end;

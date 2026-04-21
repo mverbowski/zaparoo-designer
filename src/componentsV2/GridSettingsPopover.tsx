@@ -2,7 +2,9 @@ import {
   Button,
   FormControlLabel,
   IconButton,
+  MenuItem,
   Popover,
+  Select,
   Slider,
   Switch,
   TextField,
@@ -30,6 +32,8 @@ type Props = {
 
 const clampNumber = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
+
+const ROTATION_PRESETS = [15, 30, 45, 60, 90];
 
 export const GridSettingsPopover = ({
   anchorEl,
@@ -141,6 +145,70 @@ export const GridSettingsPopover = ({
           }
           label="Show guides"
         />
+        <div className="gridSettingsRotation">
+          <FormControlLabel
+            control={
+              <Switch
+                checked={settings.rotationSnapEnabled}
+                onChange={(_, checked) =>
+                  patch({ rotationSnapEnabled: checked })
+                }
+              />
+            }
+            label="Snap rotation to angle"
+          />
+          <div className="gridSettingsRotationRow">
+            <Select
+              size="small"
+              disabled={!settings.rotationSnapEnabled}
+              value={
+                ROTATION_PRESETS.includes(settings.rotationSnapIncrement)
+                  ? String(settings.rotationSnapIncrement)
+                  : 'custom'
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === 'custom') {
+                  if (
+                    ROTATION_PRESETS.includes(settings.rotationSnapIncrement)
+                  ) {
+                    patch({ rotationSnapIncrement: 10 });
+                  }
+                  return;
+                }
+                patch({ rotationSnapIncrement: Number(value) });
+              }}
+              className="gridSettingsRotationSelect"
+            >
+              {ROTATION_PRESETS.map((deg) => (
+                <MenuItem key={deg} value={String(deg)}>
+                  {deg}°
+                </MenuItem>
+              ))}
+              <MenuItem value="custom">Custom…</MenuItem>
+            </Select>
+            {!ROTATION_PRESETS.includes(settings.rotationSnapIncrement) && (
+              <TextField
+                label="Angle"
+                type="number"
+                size="small"
+                disabled={!settings.rotationSnapEnabled}
+                value={settings.rotationSnapIncrement}
+                onChange={(e) =>
+                  patch({
+                    rotationSnapIncrement: clampNumber(
+                      Number(e.target.value) || 1,
+                      1,
+                      180,
+                    ),
+                  })
+                }
+                inputProps={{ min: 1, max: 180, step: 1 }}
+                className="gridSettingsRotationCustom"
+              />
+            )}
+          </div>
+        </div>
         <div className="gridSettingsAppearance">
           <Typography variant="caption" className="gridSettingsSectionLabel">
             Appearance

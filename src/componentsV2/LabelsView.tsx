@@ -33,6 +33,7 @@ import {
 import { selectAllCards, clearCardSelection } from './cardSelection';
 import { noop } from '../utils/utils';
 import { IgdbSourceIcon, SteamGridDbSourceIcon } from './SourceIcons';
+import { loadCanvasFonts } from '../utils/canvasFonts';
 
 const LogoTabs = lazy(() => import('./panels/LogosTabs'));
 const HardwareResourcesPanel = lazy(
@@ -43,33 +44,6 @@ const GameResourcesPanel = lazy(() => import('./panels/GameResourcesPanel'));
 const LayersPanel = lazy(() => import('./panels/LayersPanel'));
 const SteamPanel = lazy(() => import('./panels/SteamPanel'));
 const SingleCardEditModal = lazy(() => import('./SingleCardEditModal'));
-
-const loadFontsForCanvas = async () => {
-  const fontsToLoad = [
-    { family: 'Noto Sans', weight: '400', style: 'normal' },
-    { family: 'Noto Sans', weight: '400', style: 'italic' },
-    { family: 'Noto Sans', weight: '700', style: 'normal' },
-  ];
-
-  await Promise.all(
-    fontsToLoad.map(({ family, weight, style }) =>
-      document.fonts.load(`${style} ${weight} 16px "${family}"`),
-    ),
-  ).then(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1;
-    canvas.height = 1;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      fontsToLoad.forEach(({ family, weight, style }) => {
-        ctx.font = `${style} ${weight} 16px "${family}"`;
-        ctx.fillText('preload', 0, 0);
-      });
-    }
-  });
-
-  // Create a small disposable canvas to ensure fonts are canvas-ready
-};
 
 export const LabelsView = () => {
   const {
@@ -98,7 +72,7 @@ export const LabelsView = () => {
   const [currentLayer, setCurrentSelectedLayer] = useState<FabricObject | undefined >(undefined);
 
   useEffect(() => {
-    loadFontsForCanvas();
+    loadCanvasFonts();
   }, []);
 
   const onClose = useCallback(() => {

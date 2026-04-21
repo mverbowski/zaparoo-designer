@@ -309,6 +309,19 @@ export const useEditableCanvas = ({
             target.top = newTop;
             target.setCoords();
           });
+          canvas.on('object:rotating', (opt) => {
+            const target = opt.target;
+            if (!target || target === mainImage) return;
+            const settings = gridSettingsRef.current;
+            if (!settings?.rotationSnapEnabled) return;
+            const step = settings.rotationSnapIncrement;
+            if (!step || step <= 0) return;
+            const current = target.angle ?? 0;
+            const snapped = Math.round(current / step) * step;
+            if (snapped !== current) {
+              target.rotate(snapped);
+            }
+          });
           canvas.on('after:render', () => {
             const settings = gridSettingsRef.current;
             if (!settings) return;

@@ -26,6 +26,8 @@ export const getUserTextboxOptions = (
   return {
     left: safeCanvasWidth / 2,
     top: safeCanvasHeight / 2,
+    originX: 'center' as const,
+    originY: 'center' as const,
     width: Math.min(
       Math.max(safeCanvasWidth - TEXTBOX_HORIZONTAL_PADDING, MIN_TEXTBOX_WIDTH),
       MAX_TEXTBOX_WIDTH,
@@ -33,7 +35,12 @@ export const getUserTextboxOptions = (
     fill: '#000000',
     fontFamily: 'Noto Sans',
     fontSize: 32,
-    textAlign: 'left' as const,
+    fontWeight: 'normal' as const,
+    fontStyle: 'normal' as const,
+    underline: false,
+    textAlign: 'center' as const,
+    lineHeight: 1.2,
+    charSpacing: 0,
     'zaparoo-user-layer': true,
   };
 };
