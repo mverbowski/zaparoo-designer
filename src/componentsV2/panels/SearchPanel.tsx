@@ -1,5 +1,4 @@
 import {
-  Alert,
   Button,
   TextField,
   Typography,
@@ -18,6 +17,14 @@ import {
   type MutableRefObject,
 } from 'react';
 import { useFileDropperContext } from '../../contexts/fileDropper';
+import {
+  useSingleCardSearchContext,
+  type IgdbSearchCache,
+} from '../../contexts/singleCardSearch';
+import {
+  buildSteamSearchResult,
+  crossFillSteamFromIgdb,
+} from '../../utils/crossSearch';
 
 import { boxShadow } from '../../constants';
 import { useInView } from 'react-intersection-observer';
@@ -42,14 +49,15 @@ export default function ImageSearchPanel({
   isEditing: boolean;
   onSelectGame?: () => void;
 }) {
-  const { addFiles, editingCard, cards, swapGameAtIndex } =
+  const { addFiles, editingCard, cards, swapGameAtIndex, setMatchAtIndex } =
     useFileDropperContext();
-
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [gameEntries, setGameEntries] = useState<SearchResult[]>([]);
-  const [page, setPage] = useState<number>(1);
-  const [hasMore, setHasMore] = useState<boolean>(false);
-  const [isRomHacks, setIsRomHacks] = useState<boolean>(true);
+  const { igdb, setIgdb, setSteam } = useSingleCardSearchContext();
+  const { searchQuery, gameEntries, page, hasMore, isRomHacks } = igdb;
+  const updateIgdb = useCallback(
+    (patch: Partial<IgdbSearchCache>) =>
+      setIgdb((prev) => ({ ...prev, ...patch })),
+    [setIgdb],
+  );
   const [searching, setSearching] = useState<boolean>(false);
   const [platform] = useState<PlatformResult>({
     id: 0,
@@ -82,9 +90,8 @@ export default function ImageSearchPanel({
   }, [openGameId]);
 
   useEffect(() => {
-    setPage(1);
-    setHasMore(false);
-  }, [platform, isRomHacks]);
+    updateIgdb({ page: 1, hasMore: false });
+  }, [platform, isRomHacks, updateIgdb]);
 
   const addImage = useCallback(
     (e: MouseEvent<HTMLImageElement>, url: string, game: SearchResult) => {
@@ -96,6 +103,7 @@ export default function ImageSearchPanel({
         editingCard: isEditing ? editingCard : null,
         editingCanvas: editingCanvasRef?.current ?? null,
         game,
+        source: 'igdb',
         onSelectGame,
         previewSrc: target.src,
         scheduleAddFiles: startTransition,
@@ -104,6 +112,27 @@ export default function ImageSearchPanel({
       }).finally(() => {
         setLoadingGameId(null);
       });
+
+      // Cross-fill Steam only if the card doesn't already have a Steam match.
+      const targetCard = isEditing
+        ? editingCard
+        : cards.current.find((c) => c.isSelected) ?? null;
+      const hasExistingSteamMatch = !!targetCard?.matches?.steam;
+      if (!hasExistingSteamMatch) {
+        void crossFillSteamFromIgdb(game, setSteam)
+          .then((topSteamGame) => {
+            if (!topSteamGame || !targetCard) return;
+            const idx = cards.current.indexOf(targetCard);
+            if (idx === -1) return;
+            // provisional Steam match: game identity only, no cover yet
+            setMatchAtIndex(
+              'steam',
+              buildSteamSearchResult(topSteamGame, targetCard.game?.cover),
+              idx,
+            );
+          })
+          .catch((err) => console.error(err));
+      }
     },
     [
       addFiles,
@@ -111,6 +140,8 @@ export default function ImageSearchPanel({
       editingCard,
       cards,
       swapGameAtIndex,
+      setMatchAtIndex,
+      setSteam,
       onSelectGame,
       editingCanvasRef,
     ],
@@ -119,7 +150,7 @@ export default function ImageSearchPanel({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const executeSearchWithReset = (e: any) => {
     e.preventDefault();
-    setPage(1);
+    updateIgdb({ page: 1 });
     setSearching(true);
     executeSearch(searchQuery, 1, platform, isRomHacks, false);
   };
@@ -138,15 +169,14 @@ export default function ImageSearchPanel({
     timerRef.current = now;
     fetchGameList(searchQuery, platform, page.toString(), isRomHacks)
       .then(({ games, hasMore }) => {
-        if (queueResults) {
-          setGameEntries([...gameEntries, ...games]);
-        } else {
-          setGameEntries(games);
-        }
-        if (hasMore) {
-          setPage(page + 1);
-        }
-        setHasMore(hasMore);
+        setIgdb((prev) => ({
+          ...prev,
+          gameEntries: queueResults
+            ? [...prev.gameEntries, ...games]
+            : games,
+          page: hasMore ? page + 1 : prev.page,
+          hasMore,
+        }));
         setSearching(false);
       })
       .catch((e) => {
@@ -182,7 +212,7 @@ export default function ImageSearchPanel({
           autoComplete="off"
           label="Game name"
           value={searchQuery}
-          onChange={(evt) => setSearchQuery(evt.target.value)}
+          onChange={(evt) => updateIgdb({ searchQuery: evt.target.value })}
           style={{ fontWeight: 400, fontSize: 14 }}
           onKeyDown={(e: React.KeyboardEvent) => {
             e.key === 'Enter' && executeSearchWithReset(e);
@@ -215,20 +245,12 @@ export default function ImageSearchPanel({
             onClick={(e: MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               const isSelectedCheckbox = (e.target as HTMLInputElement).checked;
-              setIsRomHacks(isSelectedCheckbox);
+              updateIgdb({ isRomHacks: isSelectedCheckbox });
             }}
           />
           Fanmade
         </Typography>
       </div>
-      {isEditing && editingCard?.game?.name && (
-        <Alert
-          severity="success"
-          sx={{ width: '100%', boxSizing: 'border-box' }}
-        >
-          Current: {editingCard.game.name}
-        </Alert>
-      )}
       <div
         className="searchResultsContainer horizontalStack"
         key="container"
@@ -242,6 +264,7 @@ export default function ImageSearchPanel({
                   ?.map((p) => p.abbreviation)
                   .join(', ')}`}
                 gameEntry={gameEntry}
+                source="igdb"
                 imgSource={gameEntry.cover}
                 addImage={addImage}
                 loading={loadingGameId === gameEntry.id}

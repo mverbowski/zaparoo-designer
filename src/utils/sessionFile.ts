@@ -1,7 +1,13 @@
 import { FabricImage, type FabricObject, type StaticCanvas } from 'fabric';
-import type { CardData } from '../contexts/fileDropper';
+import type {
+  CardData,
+  CardMatches,
+  GridSettings,
+  MatchSource,
+} from '../contexts/fileDropper';
 import type { SearchResult } from '../../netlify/apiProviders/types.mts';
 import { templates } from '../cardsTemplates';
+import type { UserFont } from './userFonts';
 
 const findTemplateByKey = (key: string) =>
   Object.values(templates).find((t) => t.key === key);
@@ -17,6 +23,8 @@ export const FABRIC_CUSTOM_PROPS = [
   'zaparoo-user-layer',
   'zaparoo-placeholder',
   'zaparoo-fill-strategy',
+  'zaparoo-locked',
+  'zaparoo-template-layer',
 ];
 
 const SESSION_VERSION = 1;
@@ -92,23 +100,36 @@ type SerializedCard = {
   originalColors: string[];
   templateKey: string | undefined;
   game: Partial<SearchResult>;
+  matches?: CardMatches;
+  primarySource?: MatchSource;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   canvasJSON: Record<string, any> | null;
   canvasWidth: number | null;
   canvasHeight: number | null;
   canvasViewportTransform: number[] | null;
+  gridSettings?: GridSettings;
 };
 
 type SessionFile = {
   version: number;
   savedAt: string;
   cards: SerializedCard[];
+  userFonts?: UserFont[];
 };
 
-export const serializeSession = (cards: CardData[]): string => {
+export type LoadedSession = {
+  cards: CardData[];
+  userFonts: UserFont[];
+};
+
+export const serializeSession = (
+  cards: CardData[],
+  userFonts: UserFont[] = [],
+): string => {
   const serialized: SessionFile = {
     version: SESSION_VERSION,
     savedAt: new Date().toISOString(),
+    userFonts,
     cards: cards.map((card) => {
       const canvasJSON = card.canvas
         ? card.canvas.toObject(FABRIC_CUSTOM_PROPS)
@@ -125,25 +146,28 @@ export const serializeSession = (cards: CardData[]): string => {
         originalColors: [...card.originalColors],
         templateKey: card.template?.key,
         game: card.game,
+        matches: card.matches,
+        primarySource: card.primarySource,
         canvasJSON,
         canvasWidth: card.canvas?.getWidth() ?? null,
         canvasHeight: card.canvas?.getHeight() ?? null,
         canvasViewportTransform: card.canvas
           ? [...card.canvas.viewportTransform]
           : null,
+        gridSettings: card.gridSettings,
       };
     }),
   };
   return JSON.stringify(serialized);
 };
 
-export const deserializeSession = (json: string): CardData[] => {
+export const deserializeSession = (json: string): LoadedSession => {
   const session: SessionFile = JSON.parse(json);
   if (!session.version || !session.cards) {
     throw new Error('Invalid session file');
   }
 
-  return session.cards.map((saved) => {
+  const cards = session.cards.map((saved) => {
     const template = saved.templateKey
       ? findTemplateByKey(saved.templateKey)
       : undefined;
@@ -151,6 +175,8 @@ export const deserializeSession = (json: string): CardData[] => {
     return {
       file: null,
       game: saved.game,
+      matches: saved.matches ?? {},
+      primarySource: saved.primarySource,
       canvas: undefined,
       canvasJSON: saved.canvasJSON ?? undefined,
       canvasWidth: saved.canvasWidth ?? undefined,
@@ -161,12 +187,21 @@ export const deserializeSession = (json: string): CardData[] => {
       colors: saved.colors,
       originalColors: saved.originalColors,
       key: saved.key,
+      gridSettings: saved.gridSettings,
     };
   });
+
+  return {
+    cards,
+    userFonts: session.userFonts ?? [],
+  };
 };
 
-export const downloadSession = (cards: CardData[]) => {
-  const json = serializeSession(cards);
+export const downloadSession = (
+  cards: CardData[],
+  userFonts: UserFont[] = [],
+) => {
+  const json = serializeSession(cards, userFonts);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -176,7 +211,7 @@ export const downloadSession = (cards: CardData[]) => {
   URL.revokeObjectURL(url);
 };
 
-export const loadSessionFromFile = (): Promise<CardData[]> => {
+export const loadSessionFromFile = (): Promise<LoadedSession> => {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';

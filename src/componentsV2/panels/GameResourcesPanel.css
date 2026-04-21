@@ -1,14 +1,77 @@
 .gameResourcesPanel {
-  height: fit-content;
-  overflow-x: hidden;
-  overflow-y: scroll;
-}
-
-.sectionNoScroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  min-height: fit-content;
 }
 
-.noPadding {
-  padding-inline: 0;
+.gameResourcesHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-inline: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gameResourcesSourceRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.gameResourcesSourceSelect {
+  flex: 1;
+  min-width: 0;
+}
+
+.gameResourcesSourceValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gameResourcesTitle {
+  word-break: break-word;
+}
+
+.gameResourcesChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.gameResourcesHint {
+  padding-inline: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gameResourcesScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
+  padding-inline: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.gameResourcesCover {
+  width: 60%;
+  max-width: 220px;
+}
+
+.gameResourcesBody {
+  white-space: pre-wrap;
+  padding-inline: 8px;
+}
+
+.panelSectionFlush {
+  margin-block: 8px 0;
+  padding-bottom: 8px;
 }

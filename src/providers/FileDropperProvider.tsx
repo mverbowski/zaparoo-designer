@@ -3,6 +3,7 @@ import type { FC, JSX } from 'react';
 import {
   type CardData,
   FileDropContext,
+  type MatchSource,
   type PossibleFile,
   type contextType,
 } from '../contexts/fileDropper';
@@ -11,6 +12,12 @@ import {
   downloadSession,
   loadSessionFromFile,
 } from '../utils/sessionFile';
+import {
+  fileToUserFont,
+  registerUserFont,
+  type UserFont,
+} from '../utils/userFonts';
+import { registerUserFontForPdf } from '../extensions/pdfFontCache';
 
 type FileDropperProps = {
   children: JSX.Element | JSX.Element[];
@@ -24,6 +31,7 @@ export const FileDropperContextProvider: FC<FileDropperProps> = ({
   // the selection state needs to be refactored.
   const [selectedCardsCount, setSelectedCardsCount] = useState<number>(0);
   const [editingCard, setEditingCardImpl] = useState<CardData | null>(null);
+  const [userFonts, setUserFonts] = useState<UserFont[]>([]);
 
   const addFiles = useCallback(
     (newFiles: PossibleFile[], games: CardData['game'][] = []) => {
@@ -32,6 +40,7 @@ export const FileDropperContextProvider: FC<FileDropperProps> = ({
         ...newFiles.map<CardData>((file, index) => ({
           file,
           game: games[index] || {},
+          matches: {},
           key: `${
             (file as File)?.name || (file as HTMLImageElement)?.src || 'empty'
           }-${Date.now()}`,
@@ -64,6 +73,7 @@ export const FileDropperContextProvider: FC<FileDropperProps> = ({
         ...newFiles.map<CardData>((file, index) => ({
           file,
           game: games[index] || {},
+          matches: {},
           key: `${
             (file as File)?.name || (file as HTMLImageElement)?.src || 'empty'
           }-${Date.now()}`,
@@ -145,22 +155,68 @@ export const FileDropperContextProvider: FC<FileDropperProps> = ({
   );
 
   const swapGameAtIndex = useCallback(
-    async (file: PossibleFile, game: Partial<SearchResult>, index: number) => {
+    async (
+      file: PossibleFile,
+      game: SearchResult,
+      index: number,
+      source: MatchSource,
+    ) => {
       files[index] = file;
-      cards.current[index].game = game;
+      const card = cards.current[index];
+      if (card) {
+        card.game = game;
+        card.matches = { ...card.matches, [source]: game };
+        card.primarySource = source;
+      }
       setFilesImpl([...files]);
     },
     [files],
   );
 
+  const setMatchAtIndex = useCallback(
+    (source: MatchSource, game: SearchResult, index: number) => {
+      const card = cards.current[index];
+      if (!card) return;
+      card.matches = { ...card.matches, [source]: game };
+    },
+    [],
+  );
+
+  const addUserFont = useCallback(async (file: File) => {
+    const font = await fileToUserFont(file);
+    await registerUserFont(font);
+    registerUserFontForPdf(font);
+    setUserFonts((prev) => {
+      if (
+        prev.some(
+          (f) =>
+            f.family === font.family &&
+            f.weight === font.weight &&
+            f.style === font.style,
+        )
+      ) {
+        return prev;
+      }
+      return [...prev, font];
+    });
+    return font;
+  }, []);
+
   const saveSession = useCallback(() => {
-    downloadSession(cards.current);
-  }, [cards]);
+    downloadSession(cards.current, userFonts);
+  }, [cards, userFonts]);
 
   const loadSession = useCallback(async () => {
     const loaded = await loadSessionFromFile();
-    cards.current = loaded;
-    setFilesImpl(loaded.map((card) => card.file));
+    await Promise.all(
+      loaded.userFonts.map(async (font) => {
+        await registerUserFont(font);
+        registerUserFontForPdf(font);
+      }),
+    );
+    cards.current = loaded.cards;
+    setFilesImpl(loaded.cards.map((card) => card.file));
+    setUserFonts(loaded.userFonts);
     setSelectedCardsCount(0);
     setEditingCardImpl(null);
   }, [cards]);
@@ -179,8 +235,11 @@ export const FileDropperContextProvider: FC<FileDropperProps> = ({
       editingCard,
       setEditingCard,
       swapGameAtIndex,
+      setMatchAtIndex,
       saveSession,
       loadSession,
+      userFonts,
+      addUserFont,
     }),
     [
       files,
@@ -193,8 +252,11 @@ export const FileDropperContextProvider: FC<FileDropperProps> = ({
       editingCard,
       setEditingCard,
       swapGameAtIndex,
+      setMatchAtIndex,
       saveSession,
       loadSession,
+      userFonts,
+      addUserFont,
     ],
   );
 

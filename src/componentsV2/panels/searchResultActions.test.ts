@@ -36,6 +36,7 @@ vi.mock('../../utils/applyMainImageToCanvas', () => ({
 const makeCard = (isSelected = false): CardData => ({
   file: null,
   game: {},
+  matches: {},
   isSelected,
   colors: [],
   originalColors: [],
@@ -112,13 +113,14 @@ describe('applySearchResultToCards', () => {
       editingCard: cards[1],
       editingCanvas,
       game,
+      source: 'igdb',
       onSelectGame,
       previewSrc: game.cover.thumb,
       swapGameAtIndex,
       url: game.cover.url,
     });
 
-    expect(swapGameAtIndex).toHaveBeenCalledWith(null, game, 1);
+    expect(swapGameAtIndex).toHaveBeenCalledWith(null, game, 1, 'igdb');
     expect(applyMainImageIfCanvasIsEmpty).toHaveBeenNthCalledWith(
       1,
       cards[1].canvas,
@@ -142,13 +144,14 @@ describe('applySearchResultToCards', () => {
       cards,
       editingCard: null,
       game,
+      source: 'igdb',
       onSelectGame,
       previewSrc: game.cover.thumb,
       swapGameAtIndex,
       url: game.cover.url,
     });
 
-    expect(swapGameAtIndex).toHaveBeenCalledWith(null, game, 1);
+    expect(swapGameAtIndex).toHaveBeenCalledWith(null, game, 1, 'igdb');
     expect(onSelectGame).not.toHaveBeenCalled();
   });
 });

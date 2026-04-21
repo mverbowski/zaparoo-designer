@@ -1,5 +1,6 @@
 import { type Group, type SerializedGroupProps } from 'fabric';
 import type { Authors } from './templateAuthors';
+import type { GridSettings } from './contexts/fileDropper';
 
 export type templateLayer = {
   url: string;
@@ -82,4 +83,5 @@ export type templateTypeV2 = {
   printableAreas?: PrintableArea[];
   key: string;
   preview: string;
+  defaultGrid?: Partial<GridSettings>;
 };

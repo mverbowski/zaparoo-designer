@@ -1,0 +1,165 @@
+.gridSettingsPopover {
+  background-color: #2a2d36 !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gridSettingsPopoverContent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  width: 260px;
+}
+
+.gridSettingsRow {
+  display: flex;
+  gap: 8px;
+}
+
+.gridSettingsPopover .MuiFormControlLabel-label {
+  font-size: 13px;
+}
+
+.gridSettingsPopover .MuiTextField-root {
+  flex: 1;
+}
+
+.gridSettingsPopover .MuiInputBase-input {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.gridSettingsPopover .MuiInputLabel-root {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.gridSettingsPopover .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.gridSettingsAppearance {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gridSettingsSectionLabel {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.gridSettingsAppearanceRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.gridSettingsColorControl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.gridSettingsColorControl input[type='color'] {
+  width: 38px;
+  height: 28px;
+  padding: 0;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.gridSettingsOpacityControl {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.gridSettingsOpacityControl .MuiSlider-root {
+  color: var(--ui-color-primary, #5361d9);
+}
+
+.gridSettingsGuides {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gridSettingsGuidesLabel {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.gridSettingsGuidesActions {
+  display: flex;
+  gap: 6px;
+}
+
+.gridSettingsGuidesEmpty {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.gridSettingsGuidesList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.gridSettingsGuideRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gridSettingsGuideOrientation {
+  width: 18px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.gridSettingsRotation {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gridSettingsRotationRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.gridSettingsRotationSelect {
+  min-width: 110px;
+}
+
+.gridSettingsRotationCustom {
+  flex: 1;
+}
+
+.gridSettingsFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}

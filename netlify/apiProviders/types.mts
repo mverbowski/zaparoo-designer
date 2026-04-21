@@ -26,6 +26,7 @@ export type InvolvedCompanies = {
 
 export type SearchResult = {
   id: string;
+  slug?: string;
   artworks: ResultImage[];
   screenshots: ResultImage[];
   cover: ResultImage;

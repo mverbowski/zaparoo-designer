@@ -1,15 +1,92 @@
-import { Modal, Button } from '@mui/material';
+import { Modal, Button, Typography } from '@mui/material';
 import './SingleCardEditModal.css';
-import { MutableRefObject, useCallback, useRef, useState } from 'react';
+import { MutableRefObject, useCallback, useMemo, useRef, useState } from 'react';
 import { useRealTimeResize } from '../hooks/useRealtimeResize';
 import { useEditableCanvas } from '../hooks/useEditableCanvas';
+import {
+  DEFAULT_GRID_SETTINGS,
+  useFileDropperContext,
+  type GridSettings,
+  type MatchSource,
+} from '../contexts/fileDropper';
 import { noop } from '../utils/utils';
 import { type FabricObject, type Canvas } from 'fabric';
+import type { SearchResult } from '../../netlify/apiProviders/types.mts';
+import { IgdbSourceIcon, SteamGridDbSourceIcon } from './SourceIcons';
+import { EditToolbar } from './EditToolbar';
 
 type SingleCardEditSpaceProps = {
   onClose: () => void;
+  onShowSourcePanel?: (source: MatchSource) => void;
   setCurrentEditingCanvas: (canvas: MutableRefObject<Canvas>) => void;
   setCurrentSelectedLayer: React.Dispatch<FabricObject | undefined>;
+};
+
+const SOURCE_LABEL: Record<MatchSource, string> = {
+  igdb: 'IGDB',
+  steam: 'SteamGridDB',
+};
+
+const SOURCE_ICON: Record<MatchSource, JSX.Element> = {
+  igdb: <IgdbSourceIcon />,
+  steam: <SteamGridDbSourceIcon />,
+};
+
+const platformLabelOf = (game: Partial<SearchResult> | undefined) =>
+  game?.platforms?.length
+    ? game.platforms.map((p) => p.abbreviation).join(', ')
+    : null;
+
+type MatchSlotProps = {
+  source: MatchSource;
+  game: Partial<SearchResult> | undefined;
+  onClick?: () => void;
+  isPrimary: boolean;
+};
+
+const MatchSlot = ({ source, game, onClick, isPrimary }: MatchSlotProps) => {
+  const hasGame = !!game?.name;
+  const platformLabel = platformLabelOf(game);
+  return (
+    <div
+      className={`matchSlot ${hasGame ? 'matchSlot-filled' : 'matchSlot-empty'} ${
+        isPrimary ? 'matchSlot-primary' : ''
+      }`}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : -1}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+    >
+      <div className="matchSlotHeader">
+        <span className="matchSlotIcon">{SOURCE_ICON[source]}</span>
+        <Typography variant="caption" className="currentGameLabel">
+          {SOURCE_LABEL[source]}
+          {isPrimary ? ' · image source' : ''}
+        </Typography>
+      </div>
+      {hasGame ? (
+        <Typography className="currentGameName">
+          {game!.name}
+          {platformLabel ? (
+            <span className="currentGamePlatform"> · {platformLabel}</span>
+          ) : null}
+        </Typography>
+      ) : (
+        <Typography className="currentGameEmpty">
+          No match — search {SOURCE_LABEL[source]}
+        </Typography>
+      )}
+    </div>
+  );
 };
 
 type SingleCardEditModalProps = SingleCardEditSpaceProps & {
@@ -18,19 +95,59 @@ type SingleCardEditModalProps = SingleCardEditSpaceProps & {
 
 export const ModalInternalComponent = ({
   onClose,
+  onShowSourcePanel,
   setCurrentEditingCanvas,
   setCurrentSelectedLayer,
 }: SingleCardEditSpaceProps) => {
   const [ready, setReady] = useState(false);
+  const [centeredScalingMode, setCenteredScalingMode] = useState(false);
+  const [activeLayer, setActiveLayer] = useState<FabricObject | undefined>(
+    undefined,
+  );
   const padderRef = useRef<HTMLDivElement>(null);
+  const { editingCard } = useFileDropperContext();
+  const templateDefaultGrid = editingCard?.template?.defaultGrid;
+  const [gridSettings, setGridSettingsState] = useState<GridSettings>(() => ({
+    ...DEFAULT_GRID_SETTINGS,
+    ...(templateDefaultGrid ?? {}),
+    ...(editingCard?.gridSettings ?? {}),
+  }));
+  const updateGridSettings = useCallback(
+    (next: GridSettings) => {
+      setGridSettingsState(next);
+      if (editingCard) {
+        editingCard.gridSettings = next;
+      }
+    },
+    [editingCard],
+  );
+  const gridTemplateDefault = useMemo(
+    () => templateDefaultGrid,
+    [templateDefaultGrid],
+  );
 
-  const { selectedCard, editableCanvas, confirmAndSave, canvasElement } =
-    useEditableCanvas({
-      setReady,
-      setCurrentResource: noop,
-      setCurrentEditingCanvas,
-      setCurrentSelectedLayer,
-    });
+  const handleSelectedLayerChange = useCallback(
+    (layer: FabricObject | undefined) => {
+      setActiveLayer(layer);
+      setCurrentSelectedLayer(layer);
+    },
+    [setCurrentSelectedLayer],
+  );
+
+  const {
+    selectedCard,
+    editableCanvas,
+    confirmAndSave,
+    canvasElement,
+    history,
+  } = useEditableCanvas({
+    setReady,
+    setCurrentResource: noop,
+    setCurrentEditingCanvas,
+    setCurrentSelectedLayer: handleSelectedLayerChange,
+    centeredScalingMode,
+    gridSettings,
+  });
 
   useRealTimeResize({
     fabricCanvas: editableCanvas.current,
@@ -45,10 +162,42 @@ export const ModalInternalComponent = ({
     confirmAndSave();
     onClose();
   }, [confirmAndSave, onClose]);
+
+  const matches = editingCard?.matches ?? {};
+  const primarySource = editingCard?.primarySource;
+
   return (
     <>
+      <EditToolbar
+        canvasRef={editableCanvas}
+        history={history}
+        centeredScalingMode={centeredScalingMode}
+        onToggleCenteredScaling={() => setCenteredScalingMode((v) => !v)}
+        gridSettings={gridSettings}
+        onGridSettingsChange={updateGridSettings}
+        gridTemplateDefault={gridTemplateDefault}
+        activeLayer={activeLayer}
+      />
       <div className="verticalStack editSpace" ref={padderRef}>
         <canvas key="doNotChangePlease" ref={canvasElement} />
+      </div>
+      <div className="currentGameBar">
+        <MatchSlot
+          source="igdb"
+          game={matches.igdb}
+          onClick={
+            onShowSourcePanel ? () => onShowSourcePanel('igdb') : undefined
+          }
+          isPrimary={primarySource === 'igdb'}
+        />
+        <MatchSlot
+          source="steam"
+          game={matches.steam}
+          onClick={
+            onShowSourcePanel ? () => onShowSourcePanel('steam') : undefined
+          }
+          isPrimary={primarySource === 'steam'}
+        />
       </div>
       <div className="horizontalStack confirmButtons">
         <Button
@@ -77,6 +226,7 @@ export const ModalInternalComponent = ({
 export const SingleCardEditModal = ({
   isOpen,
   onClose,
+  onShowSourcePanel,
   setCurrentEditingCanvas,
   setCurrentSelectedLayer,
 }: SingleCardEditModalProps) => {
@@ -104,6 +254,7 @@ export const SingleCardEditModal = ({
             setCurrentSelectedLayer={setCurrentSelectedLayer}
             setCurrentEditingCanvas={setCurrentEditingCanvas}
             onClose={onClose}
+            onShowSourcePanel={onShowSourcePanel}
           />
         )}
       </div>

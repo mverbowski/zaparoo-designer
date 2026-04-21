@@ -20,6 +20,12 @@ import { type Canvas } from 'fabric';
 import { useInView } from 'react-intersection-observer';
 import type { SearchResult } from '../../../netlify/apiProviders/types.mts';
 import { useFileDropperContext } from '../../contexts/fileDropper';
+import {
+  useSingleCardSearchContext,
+  type SteamAssetCache,
+  type SteamSearchCache,
+  INITIAL_STEAM_ASSET_CACHE,
+} from '../../contexts/singleCardSearch';
 import { PanelSection } from './PanelSection';
 import {
   fetchSteamAutocomplete,
@@ -27,6 +33,10 @@ import {
   fetchSteamLogosByGameId,
   type SteamAutocompleteGame,
 } from '../../utils/search';
+import {
+  buildSteamSearchResult,
+  crossFillIgdbFromSteam,
+} from '../../utils/crossSearch';
 import { SearchResultCard } from './SearchResultCard';
 import { applySearchResultToCards } from './searchResultActions';
 import './SteamPanel.css';
@@ -37,22 +47,6 @@ const SEARCH_DEBOUNCE_MS = 500;
 
 type SteamAssetTab = 'images' | 'logos';
 
-type SteamAssetState = {
-  entries: SearchResult[];
-  page: number;
-  total: number;
-  hasMore: boolean;
-  isLoading: boolean;
-};
-
-const INITIAL_ASSET_STATE: SteamAssetState = {
-  entries: [],
-  page: 1,
-  total: 0,
-  hasMore: false,
-  isLoading: false,
-};
-
 export default function SteamPanel({
   editingCanvasRef,
   isEditing = false,
@@ -62,21 +56,42 @@ export default function SteamPanel({
   isEditing?: boolean;
   onSelectGame?: () => void;
 }) {
-  const { addFiles, editingCard, cards, swapGameAtIndex } =
+  const { addFiles, editingCard, cards, swapGameAtIndex, setMatchAtIndex } =
     useFileDropperContext();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedGame, setSelectedGame] =
-    useState<SteamAutocompleteGame | null>(null);
-  const [options, setOptions] = useState<SteamAutocompleteGame[]>([]);
-  const [gridState, setGridState] =
-    useState<SteamAssetState>(INITIAL_ASSET_STATE);
-  const [logoState, setLogoState] =
-    useState<SteamAssetState>(INITIAL_ASSET_STATE);
+  const { steam, setSteam, setIgdb } = useSingleCardSearchContext();
+  const {
+    searchQuery,
+    selectedGame,
+    options,
+    gridState,
+    logoState,
+    tabValue,
+    hasLoadedQuery,
+    loadedGameId,
+  } = steam;
+  const updateSteam = useCallback(
+    (patch: Partial<SteamSearchCache>) =>
+      setSteam((prev) => ({ ...prev, ...patch })),
+    [setSteam],
+  );
+  const setAssetCache = useCallback(
+    (
+      assetType: SteamAssetTab,
+      updater: (prev: SteamAssetCache) => SteamAssetCache,
+    ) =>
+      setSteam((prev) => ({
+        ...prev,
+        [assetType === 'logos' ? 'logoState' : 'gridState']: updater(
+          assetType === 'logos' ? prev.logoState : prev.gridState,
+        ),
+      })),
+    [setSteam],
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [loadingGameId, setLoadingGameId] = useState<string | null>(null);
   const [tooltipGameId, setTooltipGameId] = useState<string | null>(null);
-  const [hasLoadedQuery, setHasLoadedQuery] = useState(false);
-  const [tabValue, setTabValue] = useState('images');
+  const [isGridLoading, setIsGridLoading] = useState(false);
+  const [isLogoLoading, setIsLogoLoading] = useState(false);
   const deferredQuery = useDeferredValue(searchQuery.trim());
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const gridStateRef = useRef(gridState);
@@ -98,14 +113,14 @@ export default function SteamPanel({
   }, [logoState]);
 
   const handleTabChange = (_event: SyntheticEvent, newValue: string) => {
-    setTabValue(newValue);
+    updateSteam({ tabValue: newValue as 'images' | 'logos' });
   };
-
-  const getAssetSetter = (assetType: SteamAssetTab) =>
-    assetType === 'logos' ? setLogoState : setGridState;
 
   const getAssetState = (assetType: SteamAssetTab) =>
     assetType === 'logos' ? logoStateRef.current : gridStateRef.current;
+
+  const getAssetLoading = (assetType: SteamAssetTab) =>
+    assetType === 'logos' ? isLogoLoading : isGridLoading;
 
   const loadAssetPage = useCallback(
     (
@@ -120,7 +135,8 @@ export default function SteamPanel({
         signal?: AbortSignal;
       } = {},
     ) => {
-      const setAssetState = getAssetSetter(assetType);
+      const setLoading =
+        assetType === 'logos' ? setIsLogoLoading : setIsGridLoading;
       const fetchAssets =
         assetType === 'logos'
           ? fetchSteamLogosByGameId
@@ -128,11 +144,10 @@ export default function SteamPanel({
       const requestId = requestIdsRef.current[assetType] + 1;
       requestIdsRef.current[assetType] = requestId;
 
-      setAssetState((prev) =>
-        reset
-          ? { ...INITIAL_ASSET_STATE, isLoading: true }
-          : { ...prev, isLoading: true },
-      );
+      setLoading(true);
+      if (reset) {
+        setAssetCache(assetType, () => INITIAL_STEAM_ASSET_CACHE);
+      }
 
       void fetchAssets(game.id, game.name, { page, signal })
         .then(({ games, count, hasMore }) => {
@@ -140,16 +155,13 @@ export default function SteamPanel({
             return;
           }
 
-          setAssetState((prev) => {
-            const entries = reset ? games : [...prev.entries, ...games];
-            return {
-              entries,
-              total: count,
-              hasMore,
-              isLoading: false,
-              page: hasMore ? page + 1 : page,
-            };
-          });
+          setAssetCache(assetType, (prev) => ({
+            entries: reset ? games : [...prev.entries, ...games],
+            total: count,
+            hasMore,
+            page: hasMore ? page + 1 : page,
+          }));
+          setLoading(false);
         })
         .catch((err) => {
           if (requestIdsRef.current[assetType] !== requestId) {
@@ -157,15 +169,15 @@ export default function SteamPanel({
           }
 
           if (err instanceof DOMException && err.name === 'AbortError') {
-            setAssetState((prev) => ({ ...prev, isLoading: false }));
+            setLoading(false);
             return;
           }
 
           console.error(err);
-          setAssetState((prev) => ({ ...prev, isLoading: false }));
+          setLoading(false);
         });
     },
-    [],
+    [setAssetCache],
   );
 
   useEffect(() => {
@@ -180,9 +192,8 @@ export default function SteamPanel({
 
   useEffect(() => {
     if (deferredQuery.length < MIN_QUERY_LENGTH) {
-      setOptions([]);
+      updateSteam({ options: [], hasLoadedQuery: false });
       setIsLoading(false);
-      setHasLoadedQuery(false);
       return;
     }
 
@@ -191,8 +202,7 @@ export default function SteamPanel({
       setIsLoading(true);
       void fetchSteamAutocomplete(deferredQuery, controller.signal)
         .then((results) => {
-          setOptions(results);
-          setHasLoadedQuery(true);
+          updateSteam({ options: results, hasLoadedQuery: true });
         })
         .finally(() => {
           setIsLoading(false);
@@ -203,18 +213,28 @@ export default function SteamPanel({
       controller.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [deferredQuery]);
+  }, [deferredQuery, updateSteam]);
 
   useEffect(() => {
     if (!selectedGame) {
-      setGridState(INITIAL_ASSET_STATE);
-      setLogoState(INITIAL_ASSET_STATE);
+      updateSteam({
+        gridState: INITIAL_STEAM_ASSET_CACHE,
+        logoState: INITIAL_STEAM_ASSET_CACHE,
+        loadedGameId: null,
+      });
       setTooltipGameId(null);
+      return;
+    }
+
+    // Skip refetch if cache was already populated for this game (e.g. restored
+    // after switching away and back to the Steam panel).
+    if (loadedGameId === selectedGame.id) {
       return;
     }
 
     const controller = new AbortController();
     setTooltipGameId(null);
+    updateSteam({ loadedGameId: selectedGame.id });
     loadAssetPage('images', selectedGame, 0, {
       reset: true,
       signal: controller.signal,
@@ -227,7 +247,10 @@ export default function SteamPanel({
     return () => {
       controller.abort();
     };
-  }, [loadAssetPage, selectedGame]);
+    // loadedGameId is intentionally read but not a dep: mutating it inside
+    // the effect would re-trigger and abort the fetch we just started.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadAssetPage, selectedGame, updateSteam]);
 
   useEffect(() => {
     if (!inView || !selectedGame) {
@@ -236,8 +259,9 @@ export default function SteamPanel({
 
     const assetType = tabValue === 'logos' ? 'logos' : 'images';
     const assetState = getAssetState(assetType);
+    const assetLoading = getAssetLoading(assetType);
 
-    if (!assetState.hasMore || assetState.isLoading) {
+    if (!assetState.hasMore || assetLoading) {
       return;
     }
 
@@ -249,26 +273,35 @@ export default function SteamPanel({
     return () => {
       controller.abort();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView, loadAssetPage, selectedGame, tabValue]);
 
   const activeAssetState = tabValue === 'logos' ? logoState : gridState;
+  const activeAssetLoading = tabValue === 'logos' ? isLogoLoading : isGridLoading;
   const visibleEntries = activeAssetState.entries;
-  const isLoadingAssets =
-    activeAssetState.isLoading && visibleEntries.length === 0;
+  const isLoadingAssets = activeAssetLoading && visibleEntries.length === 0;
 
   const addImage = (
     e: MouseEvent<HTMLImageElement>,
     url: string,
-    game: SearchResult,
+    gridEntry: SearchResult,
   ) => {
     const target = e.target as HTMLImageElement;
-    setLoadingGameId(game.id);
+    setLoadingGameId(gridEntry.id);
+
+    // The Steam grid is only an image — the actual match is the SGDB game
+    // the user picked from autocomplete. Build a SearchResult around that.
+    const steamMatch = selectedGame
+      ? buildSteamSearchResult(selectedGame, gridEntry.cover)
+      : gridEntry;
+
     void applySearchResultToCards({
       addFiles,
       cards: cards.current,
       editingCard: isEditing ? editingCard : null,
       editingCanvas: editingCanvasRef?.current ?? null,
-      game,
+      game: steamMatch,
+      source: 'steam',
       onSelectGame,
       previewSrc: target.src,
       swapGameAtIndex,
@@ -276,6 +309,22 @@ export default function SteamPanel({
     }).finally(() => {
       setLoadingGameId(null);
     });
+
+    // Cross-fill IGDB only if the card doesn't already have an IGDB match.
+    const targetCard = isEditing
+      ? editingCard
+      : cards.current.find((c) => c.isSelected) ?? null;
+    const hasExistingIgdbMatch = !!targetCard?.matches?.igdb;
+    if (!hasExistingIgdbMatch && selectedGame) {
+      void crossFillIgdbFromSteam(selectedGame.name, setIgdb)
+        .then((topIgdbGame) => {
+          if (!topIgdbGame || !targetCard) return;
+          const idx = cards.current.indexOf(targetCard);
+          if (idx === -1) return;
+          setMatchAtIndex('igdb', topIgdbGame, idx);
+        })
+        .catch((err) => console.error(err));
+    }
   };
 
   return (
@@ -286,8 +335,8 @@ export default function SteamPanel({
         loading={isLoading}
         value={selectedGame}
         inputValue={searchQuery}
-        onInputChange={(_event, value) => setSearchQuery(value)}
-        onChange={(_event, value) => setSelectedGame(value)}
+        onInputChange={(_event, value) => updateSteam({ searchQuery: value })}
+        onChange={(_event, value) => updateSteam({ selectedGame: value })}
         isOptionEqualToValue={(option, value) => option.id === value.id}
         getOptionLabel={(option) => option.name}
         noOptionsText={
@@ -348,6 +397,7 @@ export default function SteamPanel({
               key={`steam-${tabValue}-${gameEntry.id}`}
               description={gameEntry.summary}
               gameEntry={gameEntry}
+              source="steam"
               imgSource={gameEntry.cover}
               addImage={addImage}
               loading={loadingGameId === gameEntry.id}

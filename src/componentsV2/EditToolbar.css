@@ -1,0 +1,64 @@
+.editToolbarStack {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.editToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 8px;
+  background-color: rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.editToolbarZone {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.editToolbarZoneMiddle {
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}
+
+.editToolbarZoneRight {
+  margin-left: auto;
+}
+
+.editToolbar .MuiIconButton-root {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.editToolbar .MuiIconButton-root:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.editToolbar .MuiIconButton-root.Mui-disabled {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.editToolbar .MuiDivider-root {
+  margin-inline: 4px;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.editToolbarToggleActive {
+  background-color: rgba(83, 97, 217, 0.35) !important;
+  color: #ffffff !important;
+}
+
+.editToolbarCaret {
+  font-size: 12px;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.8;
+}

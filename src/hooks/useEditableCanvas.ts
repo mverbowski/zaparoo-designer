@@ -1,4 +1,8 @@
-import { type CardData, useFileDropperContext } from '../contexts/fileDropper';
+import {
+  type CardData,
+  type GridSettings,
+  useFileDropperContext,
+} from '../contexts/fileDropper';
 import {
   MutableRefObject,
   useCallback,
@@ -11,6 +15,15 @@ import { fixImageInsideCanvas } from '../utils/fixImageInsideCanvas';
 import { getMainImage } from '../utils/templateHandling';
 import { type TemplateEdit } from '../resourcesTypedef';
 import { createFabricObjectId } from '../utils/createFabricObjectId';
+import { FABRIC_CUSTOM_PROPS } from '../utils/sessionFile';
+import { useCanvasHistory, type CanvasHistory } from './useCanvasHistory';
+import {
+  buildSnapLines,
+  drawGrid,
+  drawGuides,
+  findBestAxisSnap,
+  type AxisSnap,
+} from '../utils/canvasGrid';
 
 type useEditableCanvasArgs = {
   setReady: React.Dispatch<boolean>;
@@ -19,6 +32,8 @@ type useEditableCanvasArgs = {
   >;
   setCurrentEditingCanvas?: React.Dispatch<MutableRefObject<Canvas>>;
   setCurrentSelectedLayer: React.Dispatch<FabricObject | undefined >;
+  centeredScalingMode?: boolean;
+  gridSettings?: GridSettings;
 };
 
 type useEditableCanvasReturnType = {
@@ -28,6 +43,18 @@ type useEditableCanvasReturnType = {
   editableCanvas: MutableRefObject<Canvas | null>;
   selectedCard: CardData | null;
   canvasElement: MutableRefObject<HTMLCanvasElement | null>;
+  history: CanvasHistory;
+};
+
+const isEditableTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT' ||
+    target.isContentEditable
+  );
 };
 
 export const useEditableCanvas = ({
@@ -35,26 +62,53 @@ export const useEditableCanvas = ({
   setCurrentResource,
   setCurrentEditingCanvas,
   setCurrentSelectedLayer,
+  centeredScalingMode = false,
+  gridSettings,
 }: useEditableCanvasArgs): useEditableCanvasReturnType => {
   const { cards, editingCard } = useFileDropperContext();
   const editableCanvas = useRef<Canvas | null>(null);
   const canvasElement = useRef<HTMLCanvasElement>(null);
   const [isImageAdjust, setImageAdjust] = useState<boolean>(false);
   const [isObjectAdjust, setIsObjectAdjust] = useState<boolean>(false);
+  const [canvasInstance, setCanvasInstance] = useState<Canvas | null>(null);
+  const clipboardRef = useRef<FabricObject | null>(null);
+  const altHeldRef = useRef<boolean>(false);
+  const centeredScalingModeRef = useRef<boolean>(centeredScalingMode);
+  const gridSettingsRef = useRef<GridSettings | undefined>(gridSettings);
+  const dragStateRef = useRef<{
+    target: FabricObject;
+    startLeft: number;
+    startTop: number;
+    startPointer: { x: number; y: number };
+    bboxOffsetX: number;
+    bboxOffsetY: number;
+    bboxWidth: number;
+    bboxHeight: number;
+    snappedX: AxisSnap | null;
+    snappedY: AxisSnap | null;
+  } | null>(null);
+
+  useEffect(() => {
+    centeredScalingModeRef.current = centeredScalingMode;
+  }, [centeredScalingMode]);
+
+  useEffect(() => {
+    gridSettingsRef.current = gridSettings;
+    const canvas = canvasInstance;
+    if (canvas) canvas.requestRenderAll();
+  }, [gridSettings, canvasInstance]);
 
   const selectedCard = editingCard;
+
+  const history = useCanvasHistory({
+    canvas: canvasInstance,
+    ready: canvasInstance !== null,
+  });
 
   const confirmAndSave = useCallback(async () => {
     if (!selectedCard) return;
     const canvas = editableCanvas.current!;
-    const data = canvas.toObject([
-      'selectable',
-      'evented',
-      'resourceFor',
-      'id',
-      'original_fill',
-      'original_stroke',
-    ]);
+    const data = canvas.toObject(FABRIC_CUSTOM_PROPS);
     const targetCanvas = selectedCard.canvas!;
     targetCanvas.clear();
     await targetCanvas.loadFromJSON(data);
@@ -72,21 +126,32 @@ export const useEditableCanvas = ({
       editableCanvas.current = canvas;
       setCurrentEditingCanvas?.(editableCanvas as MutableRefObject<Canvas>);
       if (selectedCard.canvas) {
-        const jsonData = selectedCard.canvas.toObject([
-          'selectable',
-          'evented',
-          'resourceFor',
-          'id',
-          'original_fill',
-          'original_stroke',
-        ]);
+        const jsonData = selectedCard.canvas.toObject(FABRIC_CUSTOM_PROPS);
         canvas.loadFromJSON(jsonData).then(() => {
-          canvas.on('object:added', ({ target }) => {
-            if (!target || target.id) {
+          // Safety: ensure every object has a unique id. Legacy state may
+          // include the same object serialized twice (an old insertAt bug
+          // meant mainImage could end up in _objects twice), so drop any
+          // subsequent object that matches an id we've already seen.
+          const seenIds = new Set<string>();
+          canvas.getObjects().slice().forEach((obj) => {
+            if (obj.id && seenIds.has(obj.id)) {
+              canvas.remove(obj);
               return;
             }
-
-            target.id = createFabricObjectId();
+            if (!obj.id) {
+              obj.id = createFabricObjectId();
+            }
+            seenIds.add(obj.id);
+          });
+          canvas.on('object:added', ({ target }) => {
+            if (!target) return;
+            if (!target.id) {
+              target.id = createFabricObjectId();
+            }
+            const mode = centeredScalingModeRef.current || altHeldRef.current;
+            if (target !== getMainImage(canvas)) {
+              target.centeredScaling = mode;
+            }
           });
 
           const mainImage = getMainImage(canvas);
@@ -96,18 +161,6 @@ export const useEditableCanvas = ({
             mainImage.strokeWidth = 0;
             mainImage.imageSmoothing = false;
           }
-          // canvas.on('mouse:down', (opt) => {
-          // const resource = opt.subTargets?.[0];
-          // if (resource && resource.resourceFor) {
-          //   const edit = selectedCard.template?.edits?.find(
-          //     // @ts-expect-error not sure what to do here
-          //     (edit) => edit.id === resource.resourceFor,
-          //   );
-          //   if (edit) {
-          //     setCurrentResource([edit, resource]);
-          //   }
-          // }
-          // });
 
           canvas.on('selection:created', ({ selected }) => {
             setCurrentSelectedLayer(selected[0]);
@@ -138,17 +191,156 @@ export const useEditableCanvas = ({
               setIsObjectAdjust(true);
             }
           });
-          canvas.on('object:moving', ({ target }) => {
+          canvas.on('mouse:down', (opt) => {
+            const target = opt.target;
+            if (!target || target === mainImage) {
+              dragStateRef.current = null;
+              return;
+            }
+            const bbox = target.getBoundingRect();
+            dragStateRef.current = {
+              target,
+              startLeft: target.left ?? 0,
+              startTop: target.top ?? 0,
+              startPointer: canvas.getScenePoint(opt.e),
+              bboxOffsetX: bbox.left - (target.left ?? 0),
+              bboxOffsetY: bbox.top - (target.top ?? 0),
+              bboxWidth: bbox.width,
+              bboxHeight: bbox.height,
+              snappedX: null,
+              snappedY: null,
+            };
+          });
+          canvas.on('mouse:up', () => {
+            dragStateRef.current = null;
+          });
+          canvas.on('object:moving', (opt) => {
+            const target = opt.target;
+            if (!target) return;
             if (target === mainImage) {
               fixImageInsideCanvas(mainImage);
+              return;
+            }
+            const state = dragStateRef.current;
+            if (!state || state.target !== target) return;
+
+            const pointer = canvas.getScenePoint(opt.e);
+            const freeLeft = state.startLeft + (pointer.x - state.startPointer.x);
+            const freeTop = state.startTop + (pointer.y - state.startPointer.y);
+
+            const settings = gridSettingsRef.current;
+            const snapOn = !!(settings && settings.snapEnabled);
+            const lines = snapOn
+              ? buildSnapLines(canvas, settings!)
+              : { vertical: [], horizontal: [] };
+            const tolerance = snapOn ? settings!.snapTolerance : 0;
+            // Hysteresis: once latched, only release when the free position
+            // drifts more than `breakDistance` past the snap line.
+            const breakDistance = tolerance * 2;
+
+            const freeBboxLeft = freeLeft + state.bboxOffsetX;
+            const freeBboxTop = freeTop + state.bboxOffsetY;
+            const candidatesX = [
+              { offset: state.bboxOffsetX, value: freeBboxLeft },
+              {
+                offset: state.bboxOffsetX + state.bboxWidth / 2,
+                value: freeBboxLeft + state.bboxWidth / 2,
+              },
+              {
+                offset: state.bboxOffsetX + state.bboxWidth,
+                value: freeBboxLeft + state.bboxWidth,
+              },
+            ];
+            const candidatesY = [
+              { offset: state.bboxOffsetY, value: freeBboxTop },
+              {
+                offset: state.bboxOffsetY + state.bboxHeight / 2,
+                value: freeBboxTop + state.bboxHeight / 2,
+              },
+              {
+                offset: state.bboxOffsetY + state.bboxHeight,
+                value: freeBboxTop + state.bboxHeight,
+              },
+            ];
+
+            let newLeft = freeLeft;
+            if (snapOn && state.snappedX) {
+              const currentPoint = freeLeft + state.snappedX.candidateOffset;
+              if (Math.abs(currentPoint - state.snappedX.line) > breakDistance) {
+                state.snappedX = null;
+              } else {
+                newLeft = state.snappedX.line - state.snappedX.candidateOffset;
+              }
+            }
+            if (snapOn && !state.snappedX) {
+              const best = findBestAxisSnap(
+                candidatesX,
+                lines.vertical,
+                tolerance,
+              );
+              if (best) {
+                state.snappedX = best;
+                newLeft = best.line - best.candidateOffset;
+              }
+            }
+
+            let newTop = freeTop;
+            if (snapOn && state.snappedY) {
+              const currentPoint = freeTop + state.snappedY.candidateOffset;
+              if (Math.abs(currentPoint - state.snappedY.line) > breakDistance) {
+                state.snappedY = null;
+              } else {
+                newTop = state.snappedY.line - state.snappedY.candidateOffset;
+              }
+            }
+            if (snapOn && !state.snappedY) {
+              const best = findBestAxisSnap(
+                candidatesY,
+                lines.horizontal,
+                tolerance,
+              );
+              if (best) {
+                state.snappedY = best;
+                newTop = best.line - best.candidateOffset;
+              }
+            }
+
+            target.left = newLeft;
+            target.top = newTop;
+            target.setCoords();
+          });
+          canvas.on('object:rotating', (opt) => {
+            const target = opt.target;
+            if (!target || target === mainImage) return;
+            const settings = gridSettingsRef.current;
+            if (!settings?.rotationSnapEnabled) return;
+            const step = settings.rotationSnapIncrement;
+            if (!step || step <= 0) return;
+            const current = target.angle ?? 0;
+            const snapped = Math.round(current / step) * step;
+            if (snapped !== current) {
+              target.rotate(snapped);
             }
           });
+          canvas.on('after:render', () => {
+            const settings = gridSettingsRef.current;
+            if (!settings) return;
+            const ctx = canvas.getContext();
+            if (!ctx) return;
+            if (settings.enabled) {
+              drawGrid(ctx, canvas, settings);
+            }
+            if (settings.showGuides && settings.guides.length) {
+              drawGuides(ctx, canvas, settings, settings.guides);
+            }
+          });
+          setCanvasInstance(canvas);
           setReady(true);
         });
       }
       return () => {
-        // console.log('disposing');
         canvas && canvas.dispose();
+        setCanvasInstance(null);
       };
     }
   }, [
@@ -160,14 +352,118 @@ export const useEditableCanvas = ({
     setCurrentSelectedLayer,
   ]);
 
+  // Propagate the centered-scaling toggle onto every object (except the main
+  // image, which has no controls). Also re-apply on any newly added object via
+  // the `object:added` handler above.
   useEffect(() => {
+    const canvas = canvasInstance;
+    if (!canvas) return;
+    const mainImage = getMainImage(canvas);
+    canvas.getObjects().forEach((obj) => {
+      if (obj === mainImage) return;
+      obj.centeredScaling = centeredScalingMode || altHeldRef.current;
+    });
+  }, [canvasInstance, centeredScalingMode]);
+
+  useEffect(() => {
+    const applyScalingMode = (value: boolean) => {
+      const canvas = editableCanvas.current;
+      if (!canvas) return;
+      const mainImage = getMainImage(canvas);
+      canvas.getObjects().forEach((obj) => {
+        if (obj === mainImage) return;
+        obj.centeredScaling = value;
+      });
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       const canvas = editableCanvas.current;
       if (!canvas) return;
 
+      // Track Alt for transient center-scaling.
+      if (e.key === 'Alt') {
+        if (!altHeldRef.current) {
+          altHeldRef.current = true;
+          applyScalingMode(true);
+        }
+      }
+
+      if (isEditableTarget(e.target)) return;
       const activeObject = canvas.getActiveObject();
-      if (!activeObject) return;
+      if (activeObject && 'isEditing' in activeObject && activeObject.isEditing) {
+        return;
+      }
+
+      const ctrl = e.ctrlKey || e.metaKey;
       const mainImage = getMainImage(canvas);
+
+      if (ctrl && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        history.undo();
+        return;
+      }
+      if (
+        ctrl &&
+        ((e.shiftKey && (e.key === 'z' || e.key === 'Z')) ||
+          e.key === 'y' ||
+          e.key === 'Y')
+      ) {
+        e.preventDefault();
+        history.redo();
+        return;
+      }
+
+      if (!activeObject) return;
+
+      if (ctrl && (e.key === 'c' || e.key === 'C')) {
+        if (activeObject === mainImage) return;
+        e.preventDefault();
+        activeObject.clone(FABRIC_CUSTOM_PROPS).then((cloned: FabricObject) => {
+          clipboardRef.current = cloned;
+        });
+        return;
+      }
+      if (ctrl && (e.key === 'v' || e.key === 'V')) {
+        const clip = clipboardRef.current;
+        if (!clip) return;
+        e.preventDefault();
+        clip.clone(FABRIC_CUSTOM_PROPS).then((cloned: FabricObject) => {
+          cloned.left = (cloned.left ?? 0) + 10;
+          cloned.top = (cloned.top ?? 0) + 10;
+          cloned.id = createFabricObjectId();
+          canvas.add(cloned);
+          canvas.setActiveObject(cloned);
+          canvas.requestRenderAll();
+        });
+        return;
+      }
+      if (ctrl && (e.key === 'd' || e.key === 'D')) {
+        if (activeObject === mainImage) return;
+        e.preventDefault();
+        activeObject.clone(FABRIC_CUSTOM_PROPS).then((cloned: FabricObject) => {
+          cloned.left = (cloned.left ?? 0) + 10;
+          cloned.top = (cloned.top ?? 0) + 10;
+          cloned.id = createFabricObjectId();
+          canvas.add(cloned);
+          canvas.setActiveObject(cloned);
+          canvas.requestRenderAll();
+        });
+        return;
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (activeObject === mainImage) return;
+        e.preventDefault();
+        canvas.remove(activeObject);
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+        return;
+      }
 
       let moved = false;
       switch (e.key) {
@@ -200,13 +496,20 @@ export const useEditableCanvas = ({
       }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Alt' && altHeldRef.current) {
+        altHeldRef.current = false;
+        applyScalingMode(centeredScalingModeRef.current);
+      }
+    };
+
     document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
     };
-  }, []);
-
-  useEffect;
+  }, [history]);
 
   return {
     confirmAndSave,
@@ -215,5 +518,6 @@ export const useEditableCanvas = ({
     editableCanvas,
     selectedCard,
     canvasElement,
+    history,
   };
 };

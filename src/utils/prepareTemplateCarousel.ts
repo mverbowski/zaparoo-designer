@@ -18,6 +18,7 @@ export const prepareTemplateCarousel = async (
     const card: CardData = {
       file: img,
       game: {},
+      matches: {},
       canvas,
       template,
       isSelected: false,
