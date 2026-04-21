@@ -2,6 +2,8 @@ import { FabricText } from 'fabric';
 import NotoSansBold from '../assets/fonts/NotoSans-Bold.ttf';
 import NotoSansItalic from '../assets/fonts/NotoSans-Italic.ttf';
 import NotoSansRegular from '../assets/fonts/NotoSans-Regular.ttf';
+import type { UserFont } from '../utils/userFonts';
+import { userFontPdfKey } from '../utils/userFonts';
 
 // Font cache to avoid re-fetching fonts
 const fontCache: Map<string, ArrayBuffer> = new Map();
@@ -75,4 +77,11 @@ export const registerFont = async (
  */
 export const clearRegisteredFonts = () => {
   registeredFonts.clear();
+};
+
+/* Register an uploaded font so PDF export resolves it without falling back
+ * to the default. Same key shape getFontKey produces so Fabric text
+ * with `fontFamily === font.family` hits the right entry. */
+export const registerUserFontForPdf = (font: UserFont): void => {
+  fontMap[userFontPdfKey(font)] = font.dataUrl;
 };

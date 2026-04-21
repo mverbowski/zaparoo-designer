@@ -1,5 +1,6 @@
 import {
   Divider,
+  IconButton,
   MenuItem,
   Select,
   TextField,
@@ -14,9 +15,11 @@ import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
 import FormatAlignCenterIcon from '@mui/icons-material/FormatAlignCenter';
 import FormatAlignRightIcon from '@mui/icons-material/FormatAlignRight';
 import FormatAlignJustifyIcon from '@mui/icons-material/FormatAlignJustify';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { Textbox, type Canvas } from 'fabric';
-import { useState, type MutableRefObject } from 'react';
+import { useRef, useState, type MutableRefObject } from 'react';
 import { CANVAS_FONT_FAMILIES } from '../utils/canvasFonts';
+import { useFileDropperContext } from '../contexts/fileDropper';
 import './TextFormatToolbar.css';
 
 type Props = {
@@ -40,11 +43,34 @@ const toHexColor = (value: unknown, fallback: string): string => {
 
 export const TextFormatToolbar = ({ canvasRef, target }: Props) => {
   const [, forceUpdate] = useState(0);
+  const { userFonts, addUserFont } = useFileDropperContext();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const writeAndRender = (changes: Record<string, unknown>) => {
     target.set(changes);
     canvasRef.current?.requestRenderAll();
     forceUpdate((v) => v + 1);
   };
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+  const handleFileSelected = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      const font = await addUserFont(file);
+      writeAndRender({ fontFamily: font.family });
+    } catch (err) {
+      console.error('Failed to load font', err);
+    }
+  };
+
+  const userFontFamilies = Array.from(new Set(userFonts.map((f) => f.family)));
+  const allFamilies = Array.from(
+    new Set([...CANVAS_FONT_FAMILIES, ...userFontFamilies]),
+  );
 
   const fontFamily = (target.fontFamily as string) || CANVAS_FONT_FAMILIES[0];
   const fontSize = (target.fontSize as number) || 32;
@@ -67,16 +93,39 @@ export const TextFormatToolbar = ({ canvasRef, target }: Props) => {
     <div className="textFormatToolbar" role="toolbar" aria-label="Text formatting">
       <Select
         size="small"
-        value={fontFamily}
+        value={allFamilies.includes(fontFamily) ? fontFamily : ''}
+        displayEmpty
         onChange={(e) => writeAndRender({ fontFamily: e.target.value })}
         className="textFormatFont"
       >
-        {CANVAS_FONT_FAMILIES.map((family) => (
+        {!allFamilies.includes(fontFamily) && fontFamily && (
+          <MenuItem value="" disabled>
+            {fontFamily} (missing)
+          </MenuItem>
+        )}
+        {allFamilies.map((family) => (
           <MenuItem key={family} value={family} style={{ fontFamily: family }}>
             {family}
+            {userFontFamilies.includes(family) ? ' ·' : ''}
           </MenuItem>
         ))}
       </Select>
+      <Tooltip title="Upload font (.ttf, .otf, .woff)">
+        <IconButton
+          size="small"
+          onClick={handleUploadClick}
+          aria-label="Upload font"
+        >
+          <UploadFileIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".ttf,.otf,.woff,.woff2,font/*"
+        onChange={handleFileSelected}
+        hidden
+      />
       <TextField
         size="small"
         type="number"

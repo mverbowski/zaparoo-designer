@@ -3,6 +3,7 @@ import { createContext, useContext } from 'react';
 import type { StaticCanvas } from 'fabric';
 import type { templateTypeV2 } from '../resourcesTypedef';
 import type { SearchResult } from '../../netlify/apiProviders/types.mts';
+import type { UserFont } from '../utils/userFonts';
 
 export type PossibleFile = File | HTMLImageElement | null;
 
@@ -109,6 +110,8 @@ export type contextType = {
   ) => void;
   saveSession: () => void;
   loadSession: () => Promise<void>;
+  userFonts: UserFont[];
+  addUserFont: (file: File) => Promise<UserFont>;
 };
 
 export const FileDropContext = createContext<contextType>({
@@ -129,6 +132,10 @@ export const FileDropContext = createContext<contextType>({
   setMatchAtIndex: () => {},
   saveSession: () => {},
   loadSession: async () => {},
+  userFonts: [],
+  addUserFont: async () => {
+    throw new Error('addUserFont not provided');
+  },
 });
 
 export const useFileDropperContext = () => useContext(FileDropContext);

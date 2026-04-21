@@ -7,6 +7,7 @@ import type {
 } from '../contexts/fileDropper';
 import type { SearchResult } from '../../netlify/apiProviders/types.mts';
 import { templates } from '../cardsTemplates';
+import type { UserFont } from './userFonts';
 
 const findTemplateByKey = (key: string) =>
   Object.values(templates).find((t) => t.key === key);
@@ -113,12 +114,22 @@ type SessionFile = {
   version: number;
   savedAt: string;
   cards: SerializedCard[];
+  userFonts?: UserFont[];
 };
 
-export const serializeSession = (cards: CardData[]): string => {
+export type LoadedSession = {
+  cards: CardData[];
+  userFonts: UserFont[];
+};
+
+export const serializeSession = (
+  cards: CardData[],
+  userFonts: UserFont[] = [],
+): string => {
   const serialized: SessionFile = {
     version: SESSION_VERSION,
     savedAt: new Date().toISOString(),
+    userFonts,
     cards: cards.map((card) => {
       const canvasJSON = card.canvas
         ? card.canvas.toObject(FABRIC_CUSTOM_PROPS)
@@ -150,13 +161,13 @@ export const serializeSession = (cards: CardData[]): string => {
   return JSON.stringify(serialized);
 };
 
-export const deserializeSession = (json: string): CardData[] => {
+export const deserializeSession = (json: string): LoadedSession => {
   const session: SessionFile = JSON.parse(json);
   if (!session.version || !session.cards) {
     throw new Error('Invalid session file');
   }
 
-  return session.cards.map((saved) => {
+  const cards = session.cards.map((saved) => {
     const template = saved.templateKey
       ? findTemplateByKey(saved.templateKey)
       : undefined;
@@ -179,10 +190,18 @@ export const deserializeSession = (json: string): CardData[] => {
       gridSettings: saved.gridSettings,
     };
   });
+
+  return {
+    cards,
+    userFonts: session.userFonts ?? [],
+  };
 };
 
-export const downloadSession = (cards: CardData[]) => {
-  const json = serializeSession(cards);
+export const downloadSession = (
+  cards: CardData[],
+  userFonts: UserFont[] = [],
+) => {
+  const json = serializeSession(cards, userFonts);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -192,7 +211,7 @@ export const downloadSession = (cards: CardData[]) => {
   URL.revokeObjectURL(url);
 };
 
-export const loadSessionFromFile = (): Promise<CardData[]> => {
+export const loadSessionFromFile = (): Promise<LoadedSession> => {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
